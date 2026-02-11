@@ -1,0 +1,5 @@
+{
+  "name": "Fútbol Equilibrado",
+  "description": "Una aplicación para gestionar jugadores y crear equipos de fútbol perfectamente equilibrados basándose en habilidades y posiciones.",
+  "requestFramePermissions": []
+}
