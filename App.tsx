@@ -1,15 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { Player, Position, MatchResult, PositionSkillMap, SavedMatch } from './types';
 import { generateBalancedTeams } from './utils/balancer';
-import { dbAddPlayer, dbDeletePlayer, dbGetPlayers, dbSaveMatch, dbGetHistory, dbDeleteMatch, dbUpdatePlayer } from './utils/db';
+import { dbAddPlayer, dbDeletePlayer, dbGetPlayers, dbSaveMatch, dbGetHistory, dbDeleteMatch, dbUpdatePlayer } from './utils/db-supabase';
+import { onAuthStateChange, signOut } from './utils/auth';
 import { PlayerCard } from './components/PlayerCard';
 import { Modal, ModalConfig } from './components/Modal';
+import { AuthScreen } from './components/AuthScreen';
 import {
   IconUsers, IconPlus, IconRefresh, IconActivity,
   IconGoal, IconShield, IconSword, IconCopy, IconHistory, IconSave, IconTrash, IconEdit, IconSoccerBall
 } from './components/Icons';
 
 function App() {
+  // --- Auth State ---
+  const [user, setUser] = useState<any>(null);
+  const [authLoading, setAuthLoading] = useState(true);
+
   // --- State ---
   const [players, setPlayers] = useState<Player[]>([]);
   const [history, setHistory] = useState<SavedMatch[]>([]);
@@ -39,9 +45,26 @@ function App() {
   });
 
   // --- Effects ---
-  
-  // Load data from DB on mount
+
+  // Auth listener
   useEffect(() => {
+    const { data: { subscription } } = onAuthStateChange((currentUser) => {
+      setUser(currentUser);
+      setAuthLoading(false);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  // Load data from DB on mount (when user is authenticated)
+  useEffect(() => {
+    if (!user) {
+      setIsLoading(false);
+      return;
+    }
+
     const loadData = async () => {
       try {
         const loadedPlayers = await dbGetPlayers();
@@ -113,9 +136,9 @@ function App() {
         setIsLoading(false);
       }
     };
-    
+
     loadData();
-  }, []);
+  }, [user]);
 
   // --- Helpers ---
   const calculateAverageSkill = (skills: PositionSkillMap): number => {
@@ -363,6 +386,16 @@ ${result.teamB.players.map(p => p.name).join('\n')}
 
   const currentAverage = calculateAverageSkill(positionSkills);
 
+  // Show loading while checking auth
+  if (authLoading) {
+    return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500">Cargando...</div>;
+  }
+
+  // Show auth screen if not logged in
+  if (!user) {
+    return <AuthScreen />;
+  }
+
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500">Cargando datos...</div>;
   }
@@ -380,13 +413,19 @@ ${result.teamB.players.map(p => p.name).join('\n')}
       {/* Header */}
       <header className="bg-white sticky top-0 z-10 border-b border-gray-200 shadow-sm">
         <div className="max-w-4xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-pitch-500 rounded-lg flex items-center justify-center text-white">
               <IconSoccerBall className="w-5 h-5" />
             </div>
             <h1 className="text-xl font-bold text-gray-900 tracking-tight">Partidito</h1>
+            {user?.email && (
+              <span className="hidden md:inline text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                {user.email}
+              </span>
+            )}
           </div>
-          <nav className="flex bg-gray-100 rounded-lg p-1 overflow-x-auto max-w-full">
+          <div className="flex items-center gap-2">
+            <nav className="flex bg-gray-100 rounded-lg p-1 overflow-x-auto max-w-full">
             <button
               onClick={() => setActiveTab('roster')}
               className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all whitespace-nowrap ${activeTab === 'roster' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
@@ -405,7 +444,21 @@ ${result.teamB.players.map(p => p.name).join('\n')}
             >
               Historial
             </button>
-          </nav>
+            </nav>
+            <button
+              onClick={async () => {
+                try {
+                  await signOut();
+                } catch (error) {
+                  console.error('Error signing out:', error);
+                }
+              }}
+              className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-all whitespace-nowrap"
+              title="Cerrar sesión"
+            >
+              Salir
+            </button>
+          </div>
         </div>
       </header>
 
