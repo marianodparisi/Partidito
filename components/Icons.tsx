@@ -59,3 +59,12 @@ export const IconCheck = ({ className }: { className?: string }) => (
 export const IconAlert = ({ className }: { className?: string }) => (
   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
 );
+
+export const IconSoccerBall = ({ className }: { className?: string }) => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+    <circle cx="12" cy="12" r="10"/>
+    <path d="M12 2v4m0 12v4M2 12h4m12 0h4"/>
+    <path d="m16.24 7.76-2.12 2.12m-4.24 4.24-2.12 2.12m8.48 0-2.12-2.12m-4.24-4.24-2.12-2.12"/>
+    <path d="M12 8 9.5 9.5v3L12 14l2.5-1.5v-3L12 8z"/>
+  </svg>
+);

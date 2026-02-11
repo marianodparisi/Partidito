@@ -4,9 +4,9 @@ import { generateBalancedTeams } from './utils/balancer';
 import { dbAddPlayer, dbDeletePlayer, dbGetPlayers, dbSaveMatch, dbGetHistory, dbDeleteMatch, dbUpdatePlayer } from './utils/db';
 import { PlayerCard } from './components/PlayerCard';
 import { Modal, ModalConfig } from './components/Modal';
-import { 
-  IconUsers, IconPlus, IconRefresh, IconActivity, 
-  IconGoal, IconShield, IconSword, IconCopy, IconHistory, IconSave, IconTrash, IconEdit 
+import {
+  IconUsers, IconPlus, IconRefresh, IconActivity,
+  IconGoal, IconShield, IconSword, IconCopy, IconHistory, IconSave, IconTrash, IconEdit, IconSoccerBall
 } from './components/Icons';
 
 function App() {
@@ -382,9 +382,9 @@ ${result.teamB.players.map(p => p.name).join('\n')}
         <div className="max-w-4xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-pitch-500 rounded-lg flex items-center justify-center text-white">
-              <IconUsers className="w-5 h-5" />
+              <IconSoccerBall className="w-5 h-5" />
             </div>
-            <h1 className="text-xl font-bold text-gray-900 tracking-tight">Fútbol Equilibrado</h1>
+            <h1 className="text-xl font-bold text-gray-900 tracking-tight">Partidito</h1>
           </div>
           <nav className="flex bg-gray-100 rounded-lg p-1 overflow-x-auto max-w-full">
             <button

@@ -35,8 +35,14 @@ export const dbGetPlayers = async (): Promise<Player[]> => {
     const store = transaction.objectStore(STORE_PLAYERS);
     const request = store.getAll();
     
+    transaction.oncomplete = () => db.close();
+    transaction.onerror = () => db.close();
+    
     request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
+    request.onerror = () => {
+      db.close();
+      reject(request.error);
+    };
   });
 };
 
@@ -47,8 +53,14 @@ export const dbAddPlayer = async (player: Player): Promise<void> => {
     const store = transaction.objectStore(STORE_PLAYERS);
     const request = store.put(player);
     
+    transaction.oncomplete = () => db.close();
+    transaction.onerror = () => db.close();
+    
     request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
+    request.onerror = () => {
+      db.close();
+      reject(request.error);
+    };
   });
 };
 
@@ -64,8 +76,14 @@ export const dbDeletePlayer = async (id: string): Promise<void> => {
     const store = transaction.objectStore(STORE_PLAYERS);
     const request = store.delete(id);
     
+    transaction.oncomplete = () => db.close();
+    transaction.onerror = () => db.close();
+    
     request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
+    request.onerror = () => {
+      db.close();
+      reject(request.error);
+    };
   });
 };
 
@@ -78,8 +96,14 @@ export const dbSaveMatch = async (match: SavedMatch): Promise<void> => {
     const store = transaction.objectStore(STORE_HISTORY);
     const request = store.add(match);
     
+    transaction.oncomplete = () => db.close();
+    transaction.onerror = () => db.close();
+    
     request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
+    request.onerror = () => {
+      db.close();
+      reject(request.error);
+    };
   });
 };
 
@@ -90,13 +114,19 @@ export const dbGetHistory = async (): Promise<SavedMatch[]> => {
     const store = transaction.objectStore(STORE_HISTORY);
     const request = store.getAll();
     
+    transaction.oncomplete = () => db.close();
+    transaction.onerror = () => db.close();
+    
     request.onsuccess = () => {
       // Sort by timestamp desc (newest first)
       const matches = request.result as SavedMatch[];
       matches.sort((a, b) => b.timestamp - a.timestamp);
       resolve(matches);
     };
-    request.onerror = () => reject(request.error);
+    request.onerror = () => {
+      db.close();
+      reject(request.error);
+    };
   });
 };
 
@@ -107,7 +137,13 @@ export const dbDeleteMatch = async (id: string): Promise<void> => {
     const store = transaction.objectStore(STORE_HISTORY);
     const request = store.delete(id);
     
+    transaction.oncomplete = () => db.close();
+    transaction.onerror = () => db.close();
+    
     request.onsuccess = () => resolve();
-    request.onerror = () => reject(request.error);
+    request.onerror = () => {
+      db.close();
+      reject(request.error);
+    };
   });
 };
