@@ -426,11 +426,12 @@ ${result.teamB.players.map(p => p.name).join('\n')}
                 {/* Name Input */}
                 <div className="md:col-span-12">
                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Nombre</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     value={newName}
                     onChange={e => setNewName(e.target.value)}
                     placeholder="Ej. Lionel M."
+                    autoComplete="off"
                     className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400 focus:bg-white focus:border-pitch-500 focus:ring-2 focus:ring-pitch-100 outline-none transition-all font-medium"
                   />
                 </div>
@@ -443,11 +444,11 @@ ${result.teamB.players.map(p => p.name).join('\n')}
                    </div>
                    
                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                      {Object.values(Position).map(pos => {
+                      {[Position.GK, Position.DEF, Position.MID, Position.FWD].map(pos => {
                         const skillVal = positionSkills[pos];
 
                         return (
-                          <div 
+                          <div
                             key={pos}
                             className="p-3 rounded-xl border border-pitch-100 bg-white shadow-sm flex flex-col gap-2"
                           >
@@ -455,15 +456,20 @@ ${result.teamB.players.map(p => p.name).join('\n')}
                                 {getPosIcon(pos)}
                                 <span className="text-sm font-bold">{pos}</span>
                              </div>
-                             
+
                              <div className="flex items-center gap-2">
-                                <input 
-                                  type="range" 
-                                  min="0" 
-                                  max="10" 
+                                <input
+                                  type="range"
+                                  min="0"
+                                  max="10"
                                   step="0.5"
                                   value={skillVal}
-                                  onChange={(e) => handleSkillChange(pos, parseFloat(e.target.value))}
+                                  onChange={(e) => {
+                                    e.preventDefault();
+                                    handleSkillChange(pos, parseFloat(e.target.value));
+                                  }}
+                                  onTouchStart={(e) => e.stopPropagation()}
+                                  onTouchMove={(e) => e.stopPropagation()}
                                   className="w-full h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-pitch-600"
                                 />
                                 <span className="text-sm font-bold text-pitch-700 w-8 text-right">{skillVal}</span>
