@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Player, Position, MatchResult, PositionSkillMap, SavedMatch } from './types';
 import { generateBalancedTeams } from './utils/balancer';
 import { dbAddPlayer, dbDeletePlayer, dbGetPlayers, dbSaveMatch, dbGetHistory, dbDeleteMatch, dbUpdatePlayer } from './utils/db-supabase';
 import { onAuthStateChange, signOut } from './utils/auth';
 import { PlayerCard } from './components/PlayerCard';
 import { Modal, ModalConfig } from './components/Modal';
-import { AuthScreen } from './components/AuthScreen';
+import { AuthModal } from './components/AuthModal';
 import {
   IconUsers, IconPlus, IconRefresh, IconActivity,
   IconGoal, IconShield, IconSword, IconCopy, IconHistory, IconSave, IconTrash, IconEdit, IconSoccerBall
@@ -15,11 +15,12 @@ function App() {
   // --- Auth State ---
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [showAuthModal, setShowAuthModal] = useState(false);
 
   // --- State ---
   const [players, setPlayers] = useState<Player[]>([]);
   const [history, setHistory] = useState<SavedMatch[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
 
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(new Set());
   const [matchResult, setMatchResult] = useState<MatchResult | null>(null);
@@ -34,6 +35,7 @@ function App() {
     [Position.FWD]: 1,
   });
   
+  const nameInputRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState<'roster' | 'match' | 'history'>('roster');
 
   // Modal State
@@ -51,6 +53,7 @@ function App() {
     const { data: { subscription } } = onAuthStateChange((currentUser) => {
       setUser(currentUser);
       setAuthLoading(false);
+      if (currentUser) setShowAuthModal(false);
     });
 
     return () => {
@@ -60,11 +63,9 @@ function App() {
 
   // Load data from DB on mount (when user is authenticated)
   useEffect(() => {
-    if (!user) {
-      setIsLoading(false);
-      return;
-    }
+    if (!user) return;
 
+    setIsLoading(true);
     const loadData = async () => {
       try {
         const loadedPlayers = await dbGetPlayers();
@@ -218,7 +219,7 @@ function App() {
                 positions: mainPositions,
                 positionSkills: { ...positionSkills }
             };
-            dbUpdatePlayer(updated); // Fire and forget
+            if (user) dbUpdatePlayer(updated);
             return updated;
         }
         return p;
@@ -233,9 +234,9 @@ function App() {
         positions: mainPositions,
         positionSkills: positionSkills
       };
-  
+
       setPlayers(prev => [newPlayer, ...prev]);
-      await dbAddPlayer(newPlayer);
+      if (user) await dbAddPlayer(newPlayer);
     }
     
     // Reset Form
@@ -294,14 +295,15 @@ function App() {
                 cancelEditing();
             }
 
-            // DB update
-            await dbDeletePlayer(id);
+            // DB update (only if logged in)
+            if (user) await dbDeletePlayer(id);
         } catch (error) {
             console.error("Error deleting player:", error);
             showAlert("Error", "Hubo un error al eliminar el jugador.");
-            // Re-load players if error occurs (rollback)
-            const loadedPlayers = await dbGetPlayers();
-            setPlayers(loadedPlayers);
+            if (user) {
+              const loadedPlayers = await dbGetPlayers();
+              setPlayers(loadedPlayers);
+            }
         }
       }
     );
@@ -336,12 +338,16 @@ function App() {
 
   const saveMatchToHistory = async () => {
     if (!matchResult) return;
+    if (!user) {
+      showAlert("Iniciá sesión", "Para guardar partidos en el historial necesitás iniciar sesión.");
+      return;
+    }
     const toSave: SavedMatch = {
       ...matchResult,
       id: crypto.randomUUID(),
       timestamp: Date.now()
     };
-    
+
     setHistory(prev => [toSave, ...prev]);
     await dbSaveMatch(toSave);
     showSuccess("Guardado", "El partido se ha guardado correctamente en el historial.");
@@ -349,11 +355,11 @@ function App() {
 
   const handleDeleteHistory = (id: string) => {
       showConfirm(
-        'Eliminar Partido', 
-        '¿Deseas eliminar este partido del historial?', 
+        'Eliminar Partido',
+        '¿Deseas eliminar este partido del historial?',
         async () => {
           setHistory(prev => prev.filter(h => h.id !== id));
-          await dbDeleteMatch(id);
+          if (user) await dbDeleteMatch(id);
         }
       );
   };
@@ -386,30 +392,21 @@ ${result.teamB.players.map(p => p.name).join('\n')}
 
   const currentAverage = calculateAverageSkill(positionSkills);
 
-  // Show loading while checking auth
-  if (authLoading) {
+  if (authLoading || isLoading) {
     return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500">Cargando...</div>;
-  }
-
-  // Show auth screen if not logged in
-  if (!user) {
-    return <AuthScreen />;
-  }
-
-  if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500">Cargando datos...</div>;
   }
 
   // --- Renders ---
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800 font-sans pb-20">
-      <Modal 
+      <Modal
         isOpen={modal.isOpen}
         onClose={closeModal}
         {...modal}
       />
-      
+      <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
+
       {/* Header */}
       <header className="bg-white sticky top-0 z-10 border-b border-gray-200 shadow-sm">
         <div className="max-w-4xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
@@ -445,19 +442,32 @@ ${result.teamB.players.map(p => p.name).join('\n')}
               Historial
             </button>
             </nav>
-            <button
-              onClick={async () => {
-                try {
-                  await signOut();
-                } catch (error) {
-                  console.error('Error signing out:', error);
-                }
-              }}
-              className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-all whitespace-nowrap"
-              title="Cerrar sesión"
-            >
-              Salir
-            </button>
+            {user ? (
+              <button
+                onClick={async () => {
+                  try {
+                    await signOut();
+                    setPlayers([]);
+                    setHistory([]);
+                    setSelectedPlayerIds(new Set());
+                    setMatchResult(null);
+                  } catch (error) {
+                    console.error('Error signing out:', error);
+                  }
+                }}
+                className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-all whitespace-nowrap"
+                title="Cerrar sesión"
+              >
+                Salir
+              </button>
+            ) : (
+              <button
+                onClick={() => setShowAuthModal(true)}
+                className="px-3 py-1.5 text-sm font-medium text-pitch-600 hover:text-pitch-700 hover:bg-pitch-50 rounded-md transition-all whitespace-nowrap"
+              >
+                Iniciar sesión
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -480,6 +490,7 @@ ${result.teamB.players.map(p => p.name).join('\n')}
                 <div className="md:col-span-12">
                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Nombre</label>
                   <input
+                    ref={nameInputRef}
                     type="text"
                     value={newName}
                     onChange={e => setNewName(e.target.value)}
@@ -517,12 +528,8 @@ ${result.teamB.players.map(p => p.name).join('\n')}
                                   max="10"
                                   step="0.5"
                                   value={skillVal}
-                                  onChange={(e) => {
-                                    e.preventDefault();
-                                    handleSkillChange(pos, parseFloat(e.target.value));
-                                  }}
-                                  onTouchStart={(e) => e.stopPropagation()}
-                                  onTouchMove={(e) => e.stopPropagation()}
+                                  onPointerDown={() => nameInputRef.current?.blur()}
+                                  onChange={(e) => handleSkillChange(pos, parseFloat(e.target.value))}
                                   className="w-full h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-pitch-600"
                                 />
                                 <span className="text-sm font-bold text-pitch-700 w-8 text-right">{skillVal}</span>
