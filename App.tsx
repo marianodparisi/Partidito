@@ -6,10 +6,6 @@ import { onAuthStateChange, signOut } from './utils/auth';
 import { PlayerCard } from './components/PlayerCard';
 import { Modal, ModalConfig } from './components/Modal';
 import { AuthModal } from './components/AuthModal';
-import {
-  IconUsers, IconPlus, IconRefresh, IconActivity,
-  IconGoal, IconShield, IconSword, IconCopy, IconHistory, IconSave, IconTrash, IconEdit, IconSoccerBall, IconHeart
-} from './components/Icons';
 
 function App() {
   // --- Auth State ---
@@ -24,7 +20,7 @@ function App() {
 
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(new Set());
   const [matchResult, setMatchResult] = useState<MatchResult | null>(null);
-  
+
   // Form State
   const [newName, setNewName] = useState('');
   const [editingPlayerId, setEditingPlayerId] = useState<string | null>(null);
@@ -50,7 +46,6 @@ function App() {
 
   // --- Effects ---
 
-  // Auth listener
   useEffect(() => {
     const { data: { subscription } } = onAuthStateChange((currentUser) => {
       setUser(currentUser);
@@ -63,7 +58,6 @@ function App() {
     };
   }, []);
 
-  // Load data from DB on mount (when user is authenticated)
   useEffect(() => {
     if (!user) return;
 
@@ -71,19 +65,17 @@ function App() {
     const loadData = async () => {
       try {
         const loadedPlayers = await dbGetPlayers();
-        
-        // Migration Check: Ensure old data has all 4 positions
+
         const migratedPlayers = loadedPlayers.map(p => {
             const newSkills = { ...p.positionSkills };
             [Position.GK, Position.DEF, Position.MID, Position.FWD].forEach(pos => {
                 if (newSkills[pos] === undefined) {
-                    newSkills[pos] = 1; // Default to 1 if missing
+                    newSkills[pos] = 1;
                 }
             });
-            // Re-calculate derived positions just in case
             const maxSkill = Math.max(...(Object.values(newSkills) as number[]));
             const positions = (Object.keys(newSkills) as Position[]).filter(k => newSkills[k] === maxSkill);
-            
+
             return {
                 ...p,
                 positionSkills: newSkills as PositionSkillMap,
@@ -91,17 +83,14 @@ function App() {
             };
         });
 
-        // Migration Check from LocalStorage (Legacy)
         if (migratedPlayers.length === 0) {
           const lsData = localStorage.getItem('fb_players');
           if (lsData) {
             try {
               const parsed = JSON.parse(lsData);
               const lsPlayers = parsed.map((p: any) => {
-                // If totally legacy without positionSkills
                 let skills = p.positionSkills || {};
-                
-                // Initialize defaults
+
                 [Position.GK, Position.DEF, Position.MID, Position.FWD].forEach(pos => {
                     if (skills[pos] === undefined) skills[pos] = p.skill || 1;
                 });
@@ -109,9 +98,9 @@ function App() {
                 const maxSkill = Math.max(...(Object.values(skills as PositionSkillMap) as number[]));
                 const positions = (Object.keys(skills) as Position[]).filter(k => skills[k as Position] === maxSkill);
 
-                return { 
-                  ...p, 
-                  positions, 
+                return {
+                  ...p,
+                  positions,
                   positionSkills: skills,
                   skill: parseFloat((Object.values(skills as Record<string, number>).reduce((a,b)=>a+b,0) / 4).toFixed(1))
                 };
@@ -126,7 +115,6 @@ function App() {
             }
           }
         } else {
-            // Update state with migrated DB players
             setPlayers(migratedPlayers);
         }
 
@@ -200,20 +188,18 @@ function App() {
   };
 
   // --- Handlers ---
-  const handleSavePlayer = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSavePlayer = async (e?: React.FormEvent | React.MouseEvent) => {
+    if (e) e.preventDefault();
     if (!newName.trim()) return;
 
     const avgSkill = calculateAverageSkill(positionSkills);
-    
-    // Determine main positions (where skill is max)
+
     const maxSkill = Math.max(...(Object.values(positionSkills) as number[]));
     const mainPositions = (Object.keys(positionSkills) as Position[]).filter(p => positionSkills[p] === maxSkill);
 
     const staminaValue = newStamina ?? undefined;
 
     if (editingPlayerId) {
-      // Update existing
       setPlayers(prev => prev.map(p => {
         if (p.id === editingPlayerId) {
             const updated: Player = {
@@ -231,7 +217,6 @@ function App() {
       }));
       setEditingPlayerId(null);
     } else {
-      // Create new
       const newPlayer: Player = {
         id: crypto.randomUUID(),
         name: newName,
@@ -245,7 +230,6 @@ function App() {
       if (user) await dbAddPlayer(newPlayer);
     }
 
-    // Reset Form
     setNewName('');
     setPositionSkills({
       [Position.GK]: 1,
@@ -290,7 +274,6 @@ function App() {
       '¿Estás seguro de que quieres eliminar a este jugador? Esta acción no se puede deshacer.',
       async () => {
         try {
-            // Optimistic UI update
             setPlayers(prev => prev.filter(p => p.id !== id));
             setSelectedPlayerIds(prev => {
                 const next = new Set(prev);
@@ -298,12 +281,10 @@ function App() {
                 return next;
             });
 
-            // Cancel editing if we delete the player being edited
             if (editingPlayerId === id) {
                 cancelEditing();
             }
 
-            // DB update (only if logged in)
             if (user) await dbDeletePlayer(id);
         } catch (error) {
             console.error("Error deleting player:", error);
@@ -374,7 +355,7 @@ function App() {
 
   const copyToClipboard = (result: MatchResult = matchResult!) => {
     if (!result) return;
-    
+
     const text = `
 ${result.teamA.name}:
 ${result.teamA.players.map(p => p.name).join('\n')}
@@ -388,26 +369,36 @@ ${result.teamB.players.map(p => p.name).join('\n')}
     });
   };
 
-  const getPosIcon = (pos: Position) => {
-    switch (pos) {
-      case Position.GK: return <IconGoal className="w-4 h-4" />;
-      case Position.DEF: return <IconShield className="w-4 h-4" />;
-      case Position.MID: return <IconActivity className="w-4 h-4" />;
-      case Position.FWD: return <IconSword className="w-4 h-4" />;
-      default: return null;
-    }
-  };
-
   const currentAverage = calculateAverageSkill(positionSkills);
 
+  const skillPositionConfig: { pos: Position; label: string; icon: string; color: string }[] = [
+    { pos: Position.GK, label: 'Arquero', icon: 'front_hand', color: 'blue' },
+    { pos: Position.DEF, label: 'Defensa', icon: 'shield', color: 'orange' },
+    { pos: Position.MID, label: 'Medio', icon: 'show_chart', color: 'purple' },
+    { pos: Position.FWD, label: 'Ofensa', icon: 'swords', color: 'red' },
+  ];
+
+  const posColorMap: Record<string, string> = {
+    blue: 'border-blue-500 text-blue-500',
+    orange: 'border-orange-500 text-orange-500',
+    purple: 'border-purple-500 text-purple-500',
+    red: 'border-red-500 text-red-500',
+  };
+
   if (authLoading || isLoading) {
-    return <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-500">Cargando...</div>;
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4">
+        <div className="bg-[var(--primary)] p-3 rounded-sm rotate-3">
+          <span className="material-symbols-outlined text-black font-bold text-3xl block">sports_soccer</span>
+        </div>
+        <span className="display-font font-black text-2xl tracking-tighter uppercase italic text-white">Partidito</span>
+        <p className="mono-font text-white/30 text-xs uppercase tracking-widest">Cargando...</p>
+      </div>
+    );
   }
 
-  // --- Renders ---
-
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-800 font-sans pb-20">
+    <div className="min-h-screen pb-20">
       <Modal
         isOpen={modal.isOpen}
         onClose={closeModal}
@@ -415,41 +406,36 @@ ${result.teamB.players.map(p => p.name).join('\n')}
       />
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
 
-      {/* Header */}
-      <header className="bg-white sticky top-0 z-10 border-b border-gray-200 shadow-md">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
-              <img src="/icons/logo.png" alt="Partidito" className="w-full h-full object-cover scale-125" />
+      {/* Navbar */}
+      <nav className="sticky top-0 z-50 bg-black/80 backdrop-blur-xl border-b border-white/10 px-6 py-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="bg-[var(--primary)] p-2 rounded-sm rotate-3">
+              <span className="material-symbols-outlined text-black font-bold block">sports_soccer</span>
             </div>
-            <h1 className="text-xl font-bold text-gray-900 tracking-tight">Partidito</h1>
-            {user?.email && (
-              <span className="hidden md:inline text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                {user.email}
-              </span>
-            )}
+            <span className="display-font font-black text-2xl tracking-tighter uppercase italic">Partidito</span>
           </div>
-          <div className="flex items-center gap-2">
-            <nav className="flex bg-gray-100 rounded-lg p-1 overflow-x-auto max-w-full">
+          <div className="hidden md:flex items-center gap-1 mono-font bg-white/5 p-1 rounded-sm">
             <button
               onClick={() => setActiveTab('roster')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all whitespace-nowrap ${activeTab === 'roster' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              className={`px-6 py-2 text-xs font-bold uppercase tracking-widest transition-colors ${activeTab === 'roster' ? 'bg-[var(--primary)] text-black' : 'text-white/50 hover:text-white'}`}
             >
               Jugadores
             </button>
             <button
               onClick={() => setActiveTab('match')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all whitespace-nowrap ${activeTab === 'match' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              className={`px-6 py-2 text-xs font-bold uppercase tracking-widest transition-colors ${activeTab === 'match' ? 'bg-[var(--primary)] text-black' : 'text-white/50 hover:text-white'}`}
             >
               Partido
             </button>
             <button
               onClick={() => setActiveTab('history')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-all whitespace-nowrap ${activeTab === 'history' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+              className={`px-6 py-2 text-xs font-bold uppercase tracking-widest transition-colors ${activeTab === 'history' ? 'bg-[var(--primary)] text-black' : 'text-white/50 hover:text-white'}`}
             >
               Historial
             </button>
-            </nav>
+          </div>
+          <div className="flex items-center gap-6">
             {user ? (
               <button
                 onClick={async () => {
@@ -463,397 +449,573 @@ ${result.teamB.players.map(p => p.name).join('\n')}
                     console.error('Error signing out:', error);
                   }
                 }}
-                className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-all whitespace-nowrap"
-                title="Cerrar sesión"
+                className="mono-font text-[var(--primary)] text-xs font-bold uppercase tracking-widest border-b-2 border-[var(--primary)] pb-1 hover:opacity-80"
               >
                 Salir
               </button>
             ) : (
               <button
                 onClick={() => setShowAuthModal(true)}
-                className="px-3 py-1.5 text-sm font-medium text-pitch-600 hover:text-pitch-700 hover:bg-pitch-50 rounded-md transition-all whitespace-nowrap"
+                className="mono-font text-[var(--primary)] text-xs font-bold uppercase tracking-widest border-b-2 border-[var(--primary)] pb-1 hover:opacity-80"
               >
-                Iniciar sesión
+                Login
               </button>
             )}
           </div>
         </div>
-      </header>
+      </nav>
 
-      <main className="max-w-4xl mx-auto px-4 py-6">
-        
-        {/* VIEW: ROSTER MANAGEMENT */}
+      {/* Mobile Tab Bar */}
+      <div className="md:hidden sticky top-[65px] z-40 bg-black/90 backdrop-blur-xl border-b border-white/10 px-4 py-2">
+        <div className="flex items-center gap-1 mono-font bg-white/5 p-1 rounded-sm">
+          <button
+            onClick={() => setActiveTab('roster')}
+            className={`flex-1 px-3 py-2 text-[10px] font-bold uppercase tracking-widest transition-colors ${activeTab === 'roster' ? 'bg-[var(--primary)] text-black' : 'text-white/50'}`}
+          >
+            Jugadores
+          </button>
+          <button
+            onClick={() => setActiveTab('match')}
+            className={`flex-1 px-3 py-2 text-[10px] font-bold uppercase tracking-widest transition-colors ${activeTab === 'match' ? 'bg-[var(--primary)] text-black' : 'text-white/50'}`}
+          >
+            Partido
+          </button>
+          <button
+            onClick={() => setActiveTab('history')}
+            className={`flex-1 px-3 py-2 text-[10px] font-bold uppercase tracking-widest transition-colors ${activeTab === 'history' ? 'bg-[var(--primary)] text-black' : 'text-white/50'}`}
+          >
+            Historial
+          </button>
+        </div>
+      </div>
+
+      <main className="max-w-7xl mx-auto p-6 lg:p-12">
+
+        {/* ==================== ROSTER TAB ==================== */}
         {activeTab === 'roster' && (
-          <div className="space-y-8 animate-fade-in">
-            
-            {/* Add Player Form */}
-            <section className={`bg-white rounded-2xl p-6 shadow-sm border transition-colors duration-300 ${editingPlayerId ? 'border-blue-200 ring-4 ring-blue-50' : 'border-gray-100'}`}>
-              <h2 className="text-lg font-bold mb-4 text-gray-800 flex items-center gap-2">
-                {editingPlayerId ? <IconEdit className="w-5 h-5 text-blue-600" /> : <IconPlus className="w-5 h-5 text-pitch-600" />}
-                {editingPlayerId ? 'Editar Jugador' : 'Nuevo Jugador'}
-              </h2>
-              <form onSubmit={handleSavePlayer} className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
-                
-                {/* Name Input */}
-                <div className="md:col-span-12">
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Nombre</label>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            {/* Header */}
+            <div className="md:col-span-4 mb-4">
+              <div className="flex items-end justify-between">
+                <div>
+                  <h2 className="mono-font text-[var(--primary)] text-sm font-bold uppercase tracking-[0.3em] mb-2">System // Roster_Management</h2>
+                  <h1 className="display-font text-5xl md:text-7xl font-black uppercase italic tracking-tighter">
+                    {editingPlayerId ? 'Editar' : 'Dashboard'}
+                  </h1>
+                </div>
+                <div className="text-right hidden md:block">
+                  <p className="mono-font text-white/30 text-xs">STATUS: OPERATIONAL</p>
+                  <p className="mono-font text-[var(--primary)] text-xs font-bold">
+                    PLAYERS_COUNT: {players.length}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Name Input Card */}
+            <div className="md:col-span-4 glass-card p-10 rounded-none border-l-[12px] border-[var(--primary)] relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-4 mono-font text-[var(--primary)] opacity-20 text-xs">
+                {editingPlayerId ? 'EDIT_MODE' : '001_PLAYER_ID'}
+              </div>
+              <div className="flex flex-col gap-6 relative z-10">
+                <div className="flex items-center gap-4">
+                  <span className="material-symbols-outlined text-[var(--primary)] text-4xl">
+                    {editingPlayerId ? 'edit' : 'person_add'}
+                  </span>
+                  <h3 className="display-font text-3xl font-black uppercase italic">
+                    {editingPlayerId ? 'Editando Jugador' : 'Nuevo Jugador'}
+                  </h3>
+                </div>
+                <form onSubmit={handleSavePlayer}>
                   <input
                     ref={nameInputRef}
                     type="text"
                     value={newName}
                     onChange={e => setNewName(e.target.value)}
-                    placeholder="Ej. Lionel M."
+                    placeholder="INGRESE NOMBRE"
                     autoComplete="off"
-                    className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400 focus:bg-white focus:border-pitch-500 focus:ring-2 focus:ring-pitch-100 outline-none transition-all font-medium"
+                    className="w-full text-3xl md:text-5xl bg-white/5 border-b-4 border-white/10 border-t-0 border-x-0 p-6 text-white placeholder:text-white/10 focus:ring-0 focus:border-[var(--primary)] transition-all uppercase font-black italic display-font"
                   />
-                </div>
-                
-                {/* Skills per Position */}
-                <div className="md:col-span-12">
-                   <div className="flex justify-between items-center mb-3">
-                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">Habilidades (0 = Muy Malo, 10 = Pro)</label>
-                      <span className="text-xs font-bold px-2 py-1 bg-gray-100 text-gray-600 rounded">Promedio Total: {currentAverage}</span>
-                   </div>
-                   
-                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                      {[Position.GK, Position.DEF, Position.MID, Position.FWD].map(pos => {
-                        const skillVal = positionSkills[pos];
+                </form>
+              </div>
+            </div>
 
-                        return (
-                          <div
-                            key={pos}
-                            className="p-3 rounded-xl border border-pitch-100 bg-white shadow-sm flex flex-col gap-2"
-                          >
-                             <div className="flex items-center gap-2 text-gray-700">
-                                {getPosIcon(pos)}
-                                <span className="text-sm font-bold">{pos}</span>
-                             </div>
+            {/* Skills Section Header */}
+            <div className="md:col-span-4 mt-8">
+              <h4 className="mono-font text-[var(--primary)] text-xs font-bold uppercase tracking-[0.4em] mb-6 flex items-center gap-4">
+                <span className="h-px w-12 bg-[var(--primary)]"></span>
+                Habilidades_Core
+              </h4>
+            </div>
 
-                             <div className="flex items-center gap-2">
-                                <input
-                                  type="range"
-                                  min="0"
-                                  max="10"
-                                  step="0.5"
-                                  value={skillVal}
-                                  onPointerDown={() => nameInputRef.current?.blur()}
-                                  onChange={(e) => handleSkillChange(pos, parseFloat(e.target.value))}
-                                  className="w-full h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-pitch-600"
-                                />
-                                <span className="text-sm font-bold text-pitch-700 w-8 text-right">{skillVal}</span>
-                             </div>
-                          </div>
-                        );
-                      })}
-                   </div>
-                </div>
-
-                {/* Stamina (optional) */}
-                <div className="md:col-span-12">
-                  <div className="flex items-center gap-3 mb-2">
-                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">Cardio / Resistencia</label>
-                    <span className="text-[10px] text-gray-400">(opcional)</span>
-                    {newStamina === null ? (
-                      <button
-                        type="button"
-                        onClick={() => setNewStamina(5)}
-                        className="text-xs text-pitch-600 hover:text-pitch-700 font-medium underline"
-                      >
-                        Agregar
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setNewStamina(null)}
-                        className="text-xs text-red-500 hover:text-red-600 font-medium underline"
-                      >
-                        Quitar
-                      </button>
-                    )}
-                  </div>
-                  {newStamina !== null && (
-                    <div className="p-3 rounded-xl border border-orange-100 bg-white shadow-sm flex items-center gap-3">
-                      <IconHeart className="w-4 h-4 text-orange-500 flex-shrink-0" />
-                      <input
-                        type="range"
-                        min="0"
-                        max="10"
-                        step="0.5"
-                        value={newStamina}
-                        onPointerDown={() => nameInputRef.current?.blur()}
-                        onChange={(e) => setNewStamina(parseFloat(e.target.value))}
-                        className="w-full h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-orange-500"
-                      />
-                      <span className="text-sm font-bold text-orange-600 w-8 text-right">{newStamina}</span>
+            {/* Skill Cards */}
+            {skillPositionConfig.map(({ pos, label, icon, color }) => {
+              const val = positionSkills[pos];
+              const padded = String(Math.round(val)).padStart(2, '0');
+              return (
+                <div
+                  key={pos}
+                  className={`glass-card bento-card p-6 min-h-[220px] flex flex-col justify-between relative overflow-hidden group border-t-4 ${posColorMap[color].split(' ')[0]}`}
+                >
+                  <span className="material-symbols-outlined bg-player-silhouette">{icon}</span>
+                  <div className="relative z-10">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`material-symbols-outlined text-xl ${posColorMap[color].split(' ')[1]}`}>{icon}</span>
+                      <span className="mono-font text-xs font-bold uppercase tracking-wider text-white/70">{label}</span>
                     </div>
-                  )}
+                    <div className="skill-number display-font">{padded}</div>
+                  </div>
+                  <div className="relative z-10">
+                    <input
+                      type="range"
+                      min="0"
+                      max="10"
+                      step="0.5"
+                      value={val}
+                      onPointerDown={() => nameInputRef.current?.blur()}
+                      onChange={(e) => handleSkillChange(pos, parseFloat(e.target.value))}
+                      className="w-full"
+                    />
+                  </div>
                 </div>
+              );
+            })}
 
-                {/* Submit Buttons */}
-                <div className="md:col-span-12 mt-2 flex gap-3">
-                  {editingPlayerId && (
-                     <button 
-                        type="button" 
-                        onClick={cancelEditing}
-                        className="flex-1 py-3 bg-white border border-gray-300 text-gray-700 font-bold rounded-xl transition-all hover:bg-gray-50 flex justify-center items-center gap-2"
-                     >
-                        Cancelar
-                     </button>
-                  )}
-                  <button 
-                    type="submit" 
-                    disabled={!newName.trim()}
-                    className={`flex-1 py-3 font-bold rounded-xl transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex justify-center items-center gap-2 ${editingPlayerId ? 'bg-blue-600 hover:bg-blue-500 text-white' : 'bg-pitch-600 hover:bg-pitch-500 text-white'}`}
+            {/* Stamina + Tip Row */}
+            <div className="md:col-span-2 glass-card p-8 flex flex-col md:flex-row items-center justify-between gap-6 border-r-4 border-rose-600">
+              <div className="flex items-center gap-6">
+                <div className="p-4 bg-rose-600/20 text-rose-500 border border-rose-600/30">
+                  <span className="material-symbols-outlined text-4xl block">favorite</span>
+                </div>
+                <div>
+                  <h3 className="display-font font-black text-2xl uppercase italic leading-tight">Cardio / Resistencia</h3>
+                  <p className="mono-font text-white/40 text-xs tracking-wider">ENDURANCE_LEVEL_CHECK</p>
+                </div>
+              </div>
+              {newStamina === null ? (
+                <button
+                  type="button"
+                  onClick={() => setNewStamina(5)}
+                  className="mono-font text-[var(--primary)] text-xs font-bold uppercase tracking-widest border border-[var(--primary)] px-6 py-2 hover:bg-[var(--primary)] hover:text-black transition-all"
+                >
+                  Agregar
+                </button>
+              ) : (
+                <div className="flex items-center gap-4 flex-1 max-w-[200px]">
+                  <input
+                    type="range"
+                    min="0"
+                    max="10"
+                    step="0.5"
+                    value={newStamina}
+                    onPointerDown={() => nameInputRef.current?.blur()}
+                    onChange={(e) => setNewStamina(parseFloat(e.target.value))}
+                    className="w-full"
+                  />
+                  <span className="mono-font text-[var(--primary)] font-bold text-lg w-8 text-right">{newStamina}</span>
+                  <button
+                    type="button"
+                    onClick={() => setNewStamina(null)}
+                    className="text-rose-500 hover:text-rose-400"
                   >
-                    {editingPlayerId ? <IconEdit className="w-5 h-5" /> : <IconPlus className="w-5 h-5" />}
-                    {editingPlayerId ? 'Actualizar' : 'Agregar'}
+                    <span className="material-symbols-outlined text-sm">close</span>
                   </button>
                 </div>
-              </form>
-            </section>
+              )}
+            </div>
 
-            {/* List */}
-            <section>
-              <div className="flex justify-between items-end mb-4">
-                <h2 className="text-lg font-bold text-gray-800">Plantel ({players.length})</h2>
+            <div className="md:col-span-2 glass-card p-8 border border-white/5 flex items-start gap-5">
+              <span className="material-symbols-outlined text-[var(--primary)] text-3xl">terminal</span>
+              <div>
+                <span className="mono-font text-[var(--primary)] text-xs font-bold block mb-1">SYSTEM_TIP:</span>
+                <p className="text-white/60 text-sm leading-relaxed mono-font uppercase tracking-tight">
+                  Equilibra las habilidades para optimizar la generación de equipos. El algoritmo requiere datos precisos.
+                </p>
               </div>
-              
-              {players.length === 0 ? (
-                <div className="text-center py-12 bg-gray-100 rounded-2xl border border-dashed border-gray-300">
-                  <p className="text-gray-500">No hay jugadores creados aún.</p>
+            </div>
+
+            {/* Submit Button */}
+            <div className="md:col-span-4 mt-6 flex gap-4">
+              {editingPlayerId && (
+                <button
+                  type="button"
+                  onClick={cancelEditing}
+                  className="flex-1 bg-white/5 border border-white/10 text-white/70 p-10 flex items-center justify-center gap-4 transition-all hover:bg-white/10 hover:border-white/20"
+                >
+                  <span className="material-symbols-outlined text-3xl">close</span>
+                  <span className="display-font text-2xl md:text-4xl font-black uppercase italic tracking-tighter">Cancelar</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleSavePlayer}
+                disabled={!newName.trim()}
+                className="flex-1 bg-[var(--primary)] text-black p-10 neon-glow flex items-center justify-center gap-6 transition-all hover:scale-[1.01] active:scale-95 group disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100"
+              >
+                <span className="material-symbols-outlined font-black text-5xl">
+                  {editingPlayerId ? 'save' : 'add_box'}
+                </span>
+                <span className="display-font text-3xl md:text-5xl font-black uppercase italic tracking-tighter">
+                  {editingPlayerId ? 'Actualizar' : 'Agregar Jugador'}
+                </span>
+                <span className="material-symbols-outlined font-black text-5xl opacity-0 group-hover:opacity-100 transition-all translate-x-[-20px] group-hover:translate-x-0">chevron_right</span>
+              </button>
+            </div>
+
+            {/* Player List */}
+            {players.length > 0 && (
+              <>
+                <div className="md:col-span-4 mt-12">
+                  <h4 className="mono-font text-[var(--primary)] text-xs font-bold uppercase tracking-[0.4em] mb-6 flex items-center gap-4">
+                    <span className="h-px w-12 bg-[var(--primary)]"></span>
+                    Plantel // {players.length}_Jugadores
+                  </h4>
                 </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-3">
+                <div className="md:col-span-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {players.map(player => (
-                    <PlayerCard 
-                      key={player.id} 
-                      player={player} 
+                    <PlayerCard
+                      key={player.id}
+                      player={player}
                       onEdit={startEditing}
                       onDelete={handleDeletePlayer}
                     />
                   ))}
                 </div>
-              )}
-            </section>
-          </div>
-        )}
+              </>
+            )}
 
-        {/* VIEW: MATCH GENERATOR */}
-        {activeTab === 'match' && (
-          <div className="space-y-8 animate-fade-in">
-            {!matchResult ? (
-              <section className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-                <div className="flex justify-between items-center mb-6">
-                  <div>
-                    <h2 className="text-xl font-bold text-gray-900">Armar Partido</h2>
-                    <p className="text-sm text-gray-500">Selecciona quiénes vinieron hoy</p>
-                  </div>
-                  <button 
-                    onClick={selectAll}
-                    className="text-sm font-medium text-pitch-600 hover:text-pitch-700 underline"
-                  >
-                    {selectedPlayerIds.size === players.length ? 'Deseleccionar todos' : 'Seleccionar todos'}
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar mb-6">
-                  {players.map(player => (
-                    <PlayerCard 
-                      key={player.id} 
-                      player={player} 
-                      selectable 
-                      selected={selectedPlayerIds.has(player.id)}
-                      onToggleSelect={toggleSelection}
-                      compact
-                    />
-                  ))}
-                  {players.length === 0 && (
-                     <div className="col-span-2 text-center text-gray-400 py-10">Agrega jugadores en la pestaña "Jugadores" primero.</div>
-                  )}
-                </div>
-
-                <div className="sticky bottom-0 bg-white pt-4 border-t border-gray-100">
-                   <div className="flex justify-between items-center mb-4">
-                      <span className="text-sm font-medium text-gray-600">Seleccionados: {selectedPlayerIds.size}</span>
-                      <span className="text-sm font-medium text-gray-600">Tamaño: {Math.floor(selectedPlayerIds.size / 2)} vs {Math.ceil(selectedPlayerIds.size / 2)}</span>
-                   </div>
-                   {players.some(p => p.stamina != null) && (
-                     <label className="flex items-center gap-2 mb-4 cursor-pointer select-none">
-                       <input
-                         type="checkbox"
-                         checked={useStaminaInMatch}
-                         onChange={(e) => setUseStaminaInMatch(e.target.checked)}
-                         className="w-4 h-4 rounded border-gray-300 text-orange-500 accent-orange-500"
-                       />
-                       <IconHeart className="w-4 h-4 text-orange-500" />
-                       <span className="text-sm font-medium text-gray-700">Considerar cardio en el balance</span>
-                     </label>
-                   )}
-                   <button
-                    onClick={generateMatch}
-                    disabled={selectedPlayerIds.size < 2}
-                    className="w-full py-4 bg-gray-900 hover:bg-black text-white text-lg font-bold rounded-xl transition-all shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                  >
-                    <IconActivity className="w-5 h-5" />
-                    Generar Equipos Equilibrados
-                  </button>
-                </div>
-              </section>
-            ) : (
-              <div className="space-y-6">
-                 {/* Match Results Display */}
-                 <div className="flex justify-between items-center flex-wrap gap-2">
-                    <button 
-                      onClick={() => setMatchResult(null)}
-                      className="text-gray-500 hover:text-gray-900 font-medium flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-100"
-                    >
-                      ← Volver
-                    </button>
-                    
-                    <div className="flex items-center gap-2 ml-auto">
-                      <button 
-                        onClick={() => copyToClipboard()}
-                        className="bg-pitch-50 border border-pitch-200 text-pitch-700 hover:bg-pitch-100 px-4 py-2 rounded-lg text-sm font-bold shadow-sm flex items-center gap-2 transition-colors"
-                      >
-                        <IconCopy className="w-4 h-4" />
-                        Copiar
-                      </button>
-                      <button 
-                        onClick={saveMatchToHistory}
-                        className="bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100 px-4 py-2 rounded-lg text-sm font-bold shadow-sm flex items-center gap-2 transition-colors"
-                      >
-                        <IconSave className="w-4 h-4" />
-                        Guardar
-                      </button>
-                      <button 
-                        onClick={generateMatch} 
-                        className="bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium shadow-sm flex items-center gap-2 transition-colors"
-                      >
-                        <IconRefresh className="w-4 h-4" />
-                        Re-calcular
-                      </button>
-                    </div>
-                 </div>
-
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Team A */}
-                    <div className="bg-white rounded-2xl overflow-hidden shadow-lg border-t-4 border-pitch-500">
-                      <div className="bg-gray-50 p-4 border-b border-gray-100 flex justify-between items-center">
-                        <h3 className="font-bold text-xl text-gray-900">{matchResult.teamA.name}</h3>
-                        <span className="px-3 py-1 bg-white rounded-full border border-gray-200 text-sm font-bold text-gray-600">
-                          Avg: {matchResult.teamA.averageSkill}
-                        </span>
-                      </div>
-                      <div className="p-4 space-y-2">
-                        {matchResult.teamA.players.map(p => (
-                          <PlayerCard key={p.id} player={p} compact />
-                        ))}
-                      </div>
-                      <div className="bg-gray-50 p-3 text-center border-t border-gray-100">
-                        <span className="text-xs font-semibold text-gray-400 uppercase">Total Skill: {matchResult.teamA.totalSkill}</span>
-                      </div>
-                    </div>
-
-                    {/* Team B */}
-                    <div className="bg-white rounded-2xl overflow-hidden shadow-lg border-t-4 border-gray-800">
-                      <div className="bg-gray-50 p-4 border-b border-gray-100 flex justify-between items-center">
-                        <h3 className="font-bold text-xl text-gray-900">{matchResult.teamB.name}</h3>
-                        <span className="px-3 py-1 bg-white rounded-full border border-gray-200 text-sm font-bold text-gray-600">
-                          Avg: {matchResult.teamB.averageSkill}
-                        </span>
-                      </div>
-                      <div className="p-4 space-y-2">
-                        {matchResult.teamB.players.map(p => (
-                          <PlayerCard key={p.id} player={p} compact />
-                        ))}
-                      </div>
-                      <div className="bg-gray-50 p-3 text-center border-t border-gray-100">
-                        <span className="text-xs font-semibold text-gray-400 uppercase">Total Skill: {matchResult.teamB.totalSkill}</span>
-                      </div>
-                    </div>
-                 </div>
-
-                 {/* Match Stats */}
-                 <div className="bg-pitch-50 rounded-xl p-4 text-center border border-pitch-100">
-                    <p className="text-pitch-800 font-medium">
-                       Diferencia de habilidad: <span className="font-bold">{matchResult.skillDifference.toFixed(1)}</span>
-                       {matchResult.skillDifference === 0 ? " (¡Partido Perfecto!)" : " (Muy Parejo)"}
-                    </p>
-                 </div>
+            {players.length === 0 && (
+              <div className="md:col-span-4 glass-card p-12 text-center border border-dashed border-white/10">
+                <span className="material-symbols-outlined text-white/10 text-6xl mb-4 block">group_off</span>
+                <p className="mono-font text-white/30 text-sm uppercase tracking-wider">No hay jugadores creados aún</p>
               </div>
             )}
           </div>
         )}
 
-        {/* VIEW: HISTORY */}
-        {activeTab === 'history' && (
-          <div className="space-y-6 animate-fade-in">
-             <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                <IconHistory className="w-5 h-5 text-gray-600" />
-                Historial de Partidos ({history.length})
-             </h2>
-
-             {history.length === 0 ? (
-                <div className="text-center py-12 bg-white rounded-2xl border border-dashed border-gray-300 shadow-sm">
-                  <p className="text-gray-500">No hay partidos guardados.</p>
+        {/* ==================== MATCH TAB ==================== */}
+        {activeTab === 'match' && (
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-6">
+            {/* Header */}
+            <div className="md:col-span-6 mb-4">
+              <div className="flex items-end justify-between">
+                <div>
+                  <h2 className="mono-font text-[var(--primary)] text-sm font-bold uppercase tracking-[0.3em] mb-2">DASHBOARD // MATCH_SETUP</h2>
+                  <h1 className="display-font text-5xl md:text-7xl font-black uppercase italic tracking-tighter">Armar Partido</h1>
                 </div>
-             ) : (
-               <div className="grid grid-cols-1 gap-4">
-                 {history.map(item => (
-                   <div key={item.id} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-                      <div className="flex justify-between items-start mb-4">
-                         <div className="flex items-center gap-2 text-gray-500 text-sm font-medium">
-                           <IconActivity className="w-4 h-4" />
-                           {formatDate(item.timestamp)}
-                         </div>
-                         <div className="flex gap-2">
-                           <button 
-                             onClick={() => copyToClipboard(item)}
-                             className="p-2 text-gray-400 hover:text-pitch-600 hover:bg-pitch-50 rounded-lg transition-colors"
-                             title="Copiar equipos"
-                           >
-                             <IconCopy className="w-4 h-4" />
-                           </button>
-                           <button 
-                             onClick={() => handleDeleteHistory(item.id)}
-                             className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                             title="Borrar del historial"
-                           >
-                             <IconTrash className="w-4 h-4" />
-                           </button>
-                         </div>
-                      </div>
+                <div className="text-right hidden md:block">
+                  <p className="mono-font text-white/30 text-xs">MODE: COMPETITIVE_SQUAD</p>
+                  <p className="mono-font text-[var(--primary)] text-xs font-bold">ALGORITHM_READY: YES</p>
+                </div>
+              </div>
+            </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {/* Team A Summary */}
-                        <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                          <div className="flex justify-between items-center mb-2 border-b border-gray-200 pb-2">
-                            <span className="font-bold text-gray-800">{item.teamA.name}</span>
-                            <span className="text-xs bg-white px-2 py-0.5 rounded border border-gray-200 text-gray-500">Avg: {item.teamA.averageSkill}</span>
+            {!matchResult ? (
+              <>
+                {/* Selection Header */}
+                <div className="md:col-span-6 glass-card p-8 border-l-[12px] border-[var(--primary)] flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div>
+                    <h3 className="display-font text-2xl font-black uppercase italic">Selección de Plantilla</h3>
+                    <p className="mono-font text-white/40 text-sm mt-1 uppercase">Selecciona quiénes vinieron hoy para equilibrar los equipos</p>
+                  </div>
+                  <button
+                    onClick={selectAll}
+                    className="mono-font text-[var(--primary)] text-sm font-bold uppercase tracking-widest border border-[var(--primary)] px-6 py-2 hover:bg-[var(--primary)] hover:text-black transition-all"
+                  >
+                    {selectedPlayerIds.size === players.length ? 'Deseleccionar todos' : 'Seleccionar todos'}
+                  </button>
+                </div>
+
+                {/* Player Selection Grid */}
+                <div className="md:col-span-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+                  {players.map(player => (
+                    <PlayerCard
+                      key={player.id}
+                      player={player}
+                      selectable
+                      selected={selectedPlayerIds.has(player.id)}
+                      onToggleSelect={toggleSelection}
+                    />
+                  ))}
+                  {players.length === 0 && (
+                    <div className="col-span-3 glass-card p-12 text-center border border-dashed border-white/10">
+                      <p className="mono-font text-white/30 text-sm uppercase tracking-wider">
+                        Agrega jugadores en la pestaña "Jugadores" primero
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Stats Bar */}
+                <div className="md:col-span-3 glass-card p-6 border-t-4 border-[var(--primary)]">
+                  <div className="flex justify-between items-center h-full">
+                    <div className="flex items-center gap-4">
+                      <span className="material-symbols-outlined text-[var(--primary)] text-3xl">group</span>
+                      <div>
+                        <p className="mono-font text-white/40 text-[10px] uppercase tracking-wider">Seleccionados</p>
+                        <p className="display-font font-black text-3xl italic">{selectedPlayerIds.size} / {players.length}</p>
+                      </div>
+                    </div>
+                    <div className="h-10 w-px bg-white/10"></div>
+                    <div className="flex items-center gap-4">
+                      <span className="material-symbols-outlined text-[var(--primary)] text-3xl">grid_view</span>
+                      <div>
+                        <p className="mono-font text-white/40 text-[10px] uppercase tracking-wider">Tamaño Partido</p>
+                        <p className="display-font font-black text-3xl italic">
+                          {Math.floor(selectedPlayerIds.size / 2)} vs {Math.ceil(selectedPlayerIds.size / 2)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Stamina Toggle + Info */}
+                <div className="md:col-span-3 glass-card p-6 border border-white/5 flex items-center gap-5">
+                  {players.some(p => p.stamina != null) ? (
+                    <>
+                      <label className="flex items-center gap-3 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={useStaminaInMatch}
+                          onChange={(e) => setUseStaminaInMatch(e.target.checked)}
+                          className="w-5 h-5 border-2 border-white/20 bg-transparent text-[var(--primary)] focus:ring-0 checked:bg-[var(--primary)] rounded-none"
+                        />
+                        <span className="material-symbols-outlined text-rose-500 text-2xl">favorite</span>
+                        <span className="mono-font text-white/60 text-xs uppercase tracking-wider">Considerar cardio en el balance</span>
+                      </label>
+                    </>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined text-[var(--primary)] text-3xl">analytics</span>
+                      <div>
+                        <span className="mono-font text-[var(--primary)] text-xs font-bold block mb-1">ANALYTICS_SYSTEM:</span>
+                        <p className="text-white/60 text-xs leading-relaxed mono-font uppercase tracking-tight">
+                          El sistema optimizará posiciones automáticamente basándose en las estadísticas individuales.
+                        </p>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Generate Button */}
+                <div className="md:col-span-6 mt-4">
+                  <button
+                    onClick={generateMatch}
+                    disabled={selectedPlayerIds.size < 2}
+                    className="w-full bg-[var(--primary)] text-black p-10 neon-glow flex items-center justify-center gap-6 transition-all hover:scale-[1.01] active:scale-95 group relative overflow-hidden disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100"
+                  >
+                    <div className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 italic flex items-center justify-center font-black opacity-10 text-9xl">GO_MATCH</div>
+                    <span className="material-symbols-outlined font-black text-5xl relative z-10">rebase_edit</span>
+                    <span className="display-font text-3xl md:text-5xl font-black uppercase italic tracking-tighter relative z-10">Generar Equipos</span>
+                    <span className="material-symbols-outlined font-black text-5xl opacity-0 group-hover:opacity-100 transition-all translate-x-[-20px] group-hover:translate-x-0 relative z-10">bolt</span>
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Match Result View */}
+                <div className="md:col-span-6 flex justify-between items-center flex-wrap gap-4">
+                  <button
+                    onClick={() => setMatchResult(null)}
+                    className="mono-font text-white/50 text-xs font-bold uppercase tracking-widest hover:text-white flex items-center gap-2 transition-colors"
+                  >
+                    <span className="material-symbols-outlined text-sm">arrow_back</span>
+                    Volver
+                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => copyToClipboard()}
+                      className="mono-font text-[var(--primary)] text-xs font-bold uppercase tracking-widest border border-[var(--primary)] px-4 py-2 hover:bg-[var(--primary)] hover:text-black transition-all flex items-center gap-2"
+                    >
+                      <span className="material-symbols-outlined text-sm">content_copy</span>
+                      Copiar
+                    </button>
+                    <button
+                      onClick={saveMatchToHistory}
+                      className="mono-font text-[var(--primary)] text-xs font-bold uppercase tracking-widest border border-[var(--primary)] px-4 py-2 hover:bg-[var(--primary)] hover:text-black transition-all flex items-center gap-2"
+                    >
+                      <span className="material-symbols-outlined text-sm">save</span>
+                      Guardar
+                    </button>
+                    <button
+                      onClick={generateMatch}
+                      className="mono-font text-white/50 text-xs font-bold uppercase tracking-widest border border-white/20 px-4 py-2 hover:border-white/50 hover:text-white transition-all flex items-center gap-2"
+                    >
+                      <span className="material-symbols-outlined text-sm">refresh</span>
+                      Re-calcular
+                    </button>
+                  </div>
+                </div>
+
+                {/* Score Display */}
+                <div className="md:col-span-6 glass-card p-10 border-l-8 border-[var(--primary)] relative overflow-hidden">
+                  <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+                    <div className="text-center">
+                      <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mb-3 border-4 border-white/20">
+                        <span className="display-font font-black text-2xl">T_A</span>
+                      </div>
+                      <p className="mono-font text-sm font-bold">{matchResult.teamA.name}</p>
+                      <p className="mono-font text-[10px] text-white/40">AVG: {matchResult.teamA.averageSkill}</p>
+                    </div>
+                    <div className="flex flex-col items-center">
+                      <div className="display-font text-6xl md:text-8xl font-black italic tracking-tighter">
+                        <span>{matchResult.teamA.players.length}</span>
+                        <span className="text-white/20 mx-4">vs</span>
+                        <span className="text-[var(--primary)]">{matchResult.teamB.players.length}</span>
+                      </div>
+                      <span className="mono-font text-xs text-white/30 uppercase tracking-[0.3em] mt-2">PLAYERS</span>
+                    </div>
+                    <div className="text-center">
+                      <div className="w-20 h-20 bg-orange-600 rounded-full flex items-center justify-center mb-3 border-4 border-white/10">
+                        <span className="display-font font-black text-2xl">T_B</span>
+                      </div>
+                      <p className="mono-font text-sm font-bold">{matchResult.teamB.name}</p>
+                      <p className="mono-font text-[10px] text-white/40">AVG: {matchResult.teamB.averageSkill}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Skill Difference */}
+                <div className="md:col-span-6 glass-card p-6 border-t-4 border-[var(--primary)] text-center">
+                  <p className="mono-font text-[var(--primary)] text-xs font-bold uppercase tracking-widest">
+                    Diferencia de habilidad: {matchResult.skillDifference.toFixed(1)}
+                    {matchResult.skillDifference === 0 ? " // PARTIDO PERFECTO" : " // MUY PAREJO"}
+                  </p>
+                </div>
+
+                {/* Team Columns */}
+                <div className="md:col-span-3">
+                  <h4 className="mono-font text-blue-500 text-xs font-bold uppercase tracking-[0.3em] mb-4 flex items-center gap-3">
+                    <span className="h-px w-8 bg-blue-500"></span>
+                    {matchResult.teamA.name}
+                  </h4>
+                  <div className="space-y-3">
+                    {matchResult.teamA.players.map(p => (
+                      <PlayerCard key={p.id} player={p} compact />
+                    ))}
+                  </div>
+                </div>
+                <div className="md:col-span-3">
+                  <h4 className="mono-font text-orange-500 text-xs font-bold uppercase tracking-[0.3em] mb-4 flex items-center gap-3">
+                    <span className="h-px w-8 bg-orange-500"></span>
+                    {matchResult.teamB.name}
+                  </h4>
+                  <div className="space-y-3">
+                    {matchResult.teamB.players.map(p => (
+                      <PlayerCard key={p.id} player={p} compact />
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ==================== HISTORY TAB ==================== */}
+        {activeTab === 'history' && (
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+            {/* Header */}
+            <div className="md:col-span-12 mb-4">
+              <h2 className="mono-font text-[var(--primary)] text-sm font-bold uppercase tracking-[0.3em] mb-2">DASHBOARD // MATCH_HISTORY</h2>
+              <h1 className="display-font text-5xl md:text-7xl font-black uppercase italic tracking-tighter">Historial</h1>
+            </div>
+
+            {/* Stats Summary Card */}
+            {history.length > 0 && (
+              <div className="md:col-span-12 glass-card p-8 border-t-4 border-[var(--primary)]">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                  <div className="text-center">
+                    <p className="display-font text-4xl font-black italic text-[var(--primary)]">{history.length}</p>
+                    <p className="mono-font text-[10px] text-white/40 uppercase tracking-wider mt-1">Partidos Jugados</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="display-font text-4xl font-black italic">
+                      {history.reduce((sum, h) => sum + h.teamA.players.length + h.teamB.players.length, 0)}
+                    </p>
+                    <p className="mono-font text-[10px] text-white/40 uppercase tracking-wider mt-1">Participaciones</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="display-font text-4xl font-black italic">
+                      {history.length > 0
+                        ? (history.reduce((sum, h) => sum + h.skillDifference, 0) / history.length).toFixed(1)
+                        : '0'}
+                    </p>
+                    <p className="mono-font text-[10px] text-white/40 uppercase tracking-wider mt-1">Diff Promedio</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="display-font text-4xl font-black italic text-[var(--primary)]">
+                      {history.filter(h => h.skillDifference === 0).length}
+                    </p>
+                    <p className="mono-font text-[10px] text-white/40 uppercase tracking-wider mt-1">Partidos Perfectos</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Match List */}
+            <div className="md:col-span-12">
+              {history.length === 0 ? (
+                <div className="glass-card p-12 text-center border border-dashed border-white/10">
+                  <span className="material-symbols-outlined text-white/10 text-6xl mb-4 block">history</span>
+                  <p className="mono-font text-white/30 text-sm uppercase tracking-wider">No hay partidos guardados</p>
+                </div>
+              ) : (
+                <div className="space-y-4 max-h-[600px] overflow-y-auto pr-4 custom-scrollbar">
+                  {history.map(item => (
+                    <div
+                      key={item.id}
+                      className="bento-card glass-card p-6 border border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4 group"
+                    >
+                      <div className="flex items-center gap-6">
+                        <div className="text-center w-20">
+                          <p className="mono-font text-[10px] text-white/30 font-bold">{formatDate(item.timestamp).split(',')[0]}</p>
+                          <p className="display-font font-black text-xl italic leading-none">{formatDate(item.timestamp).split(',')[1]?.trim()}</p>
+                        </div>
+                        <div className="h-10 w-px bg-white/10"></div>
+                        <div>
+                          <div className="display-font text-xl font-black italic flex items-center gap-2">
+                            <span className="text-blue-400">{item.teamA.name}</span>
+                            <span className="text-white/20 text-sm">vs</span>
+                            <span className="text-orange-400">{item.teamB.name}</span>
                           </div>
-                          <p className="text-sm text-gray-600 leading-relaxed">
-                            {item.teamA.players.map(p => p.name).join(', ')}
+                          <p className="mono-font text-[10px] text-white/40 mt-1">
+                            {item.teamA.players.length + item.teamB.players.length} jugadores // diff: {item.skillDifference.toFixed(1)}
                           </p>
                         </div>
-
-                        {/* Team B Summary */}
-                        <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                          <div className="flex justify-between items-center mb-2 border-b border-gray-200 pb-2">
-                            <span className="font-bold text-gray-800">{item.teamB.name}</span>
-                            <span className="text-xs bg-white px-2 py-0.5 rounded border border-gray-200 text-gray-500">Avg: {item.teamB.averageSkill}</span>
-                          </div>
-                          <p className="text-sm text-gray-600 leading-relaxed">
-                            {item.teamB.players.map(p => p.name).join(', ')}
-                          </p>
-                        </div>
                       </div>
-                   </div>
-                 ))}
-               </div>
-             )}
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => copyToClipboard(item)}
+                          className="mono-font text-white/30 text-[10px] font-bold uppercase tracking-widest border border-white/10 px-4 py-2 hover:border-[var(--primary)] hover:text-[var(--primary)] transition-all flex items-center gap-2"
+                          title="Copiar equipos"
+                        >
+                          <span className="material-symbols-outlined text-sm">content_copy</span>
+                          Copiar
+                        </button>
+                        <button
+                          onClick={() => handleDeleteHistory(item.id)}
+                          className="mono-font text-white/30 text-[10px] font-bold uppercase tracking-widest border border-white/10 px-4 py-2 hover:border-red-500 hover:text-red-500 transition-all flex items-center gap-2"
+                          title="Eliminar"
+                        >
+                          <span className="material-symbols-outlined text-sm">delete</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </main>
+
+      {/* Footer */}
+      <footer className="max-w-7xl mx-auto px-6 py-16 text-center">
+        <div className="h-px w-full bg-gradient-to-r from-transparent via-white/10 to-transparent mb-8"></div>
+        <p className="mono-font text-white/20 text-[10px] uppercase tracking-[0.5em]">
+          Partidito // Engine v2.0 // Zero Gravity UI
+        </p>
+      </footer>
     </div>
   );
 }

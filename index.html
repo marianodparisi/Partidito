@@ -1,27 +1,38 @@
 <!DOCTYPE html>
-<html lang="es">
+<html class="dark" lang="es">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#10b981" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <meta name="theme-color" content="#0a0a0a" />
     <title>Partidito</title>
     <link rel="icon" type="image/png" href="/icons/logo.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-180.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Partidito" />
     <meta name="mobile-web-app-capable" content="yes" />
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com?plugins=forms,typography,container-queries"></script>
+    <link href="https://fonts.googleapis.com" rel="preconnect" />
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect" />
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&family=Inter:wght@400;700;900&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet" />
     <script>
       tailwind.config = {
+        darkMode: 'class',
         theme: {
           extend: {
             fontFamily: {
               sans: ['Inter', 'sans-serif'],
+              mono: ['Space Mono', 'monospace'],
+              display: ['Space Grotesk', 'sans-serif'],
             },
             colors: {
+              primary: '#afff00',
+              dark: {
+                bg: '#0a0a0a',
+                card: 'rgba(26, 26, 26, 0.6)',
+              },
               pitch: {
                 50: '#ecfdf5',
                 100: '#d1fae5',
@@ -34,8 +45,96 @@
         }
       }
     </script>
+    <style>
+      :root {
+        --primary: #afff00;
+        --bg-dark: #0a0a0a;
+        --card-bg-dark: rgba(26, 26, 26, 0.6);
+      }
+      body {
+        font-family: 'Inter', sans-serif;
+        background-color: var(--bg-dark);
+        background-image: radial-gradient(circle at 50% 50%, #1a1a1a 0%, #0a0a0a 100%);
+      }
+      .mono-font { font-family: 'Space Mono', monospace; }
+      .display-font { font-family: 'Space Grotesk', sans-serif; }
+      .glass-card {
+        background: var(--card-bg-dark);
+        backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+      }
+      .bento-card {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .bento-card:hover {
+        transform: translateY(-2px);
+        border-color: var(--primary);
+      }
+      .neon-glow {
+        box-shadow: 0 0 20px rgba(175, 255, 0, 0.3), 0 0 40px rgba(175, 255, 0, 0.1);
+      }
+      input[type="range"] {
+        -webkit-appearance: none;
+        width: 100%;
+        background: transparent;
+      }
+      input[type="range"]::-webkit-slider-runnable-track {
+        width: 100%;
+        height: 6px;
+        cursor: pointer;
+        background: rgba(255,255,255,0.1);
+        border-radius: 99px;
+      }
+      input[type="range"]::-webkit-slider-thumb {
+        height: 24px;
+        width: 24px;
+        border-radius: 4px;
+        background: var(--primary);
+        cursor: pointer;
+        -webkit-appearance: none;
+        margin-top: -9px;
+        box-shadow: 0 0 15px var(--primary);
+      }
+      .skill-number {
+        font-size: 5rem;
+        line-height: 1;
+        font-weight: 900;
+        letter-spacing: -0.05em;
+        opacity: 0.15;
+        position: absolute;
+        right: 10px;
+        bottom: -5px;
+        pointer-events: none;
+        color: white;
+      }
+      .bg-player-silhouette {
+        position: absolute;
+        right: 0;
+        bottom: 0;
+        font-size: 8rem;
+        opacity: 0.05;
+        z-index: 0;
+        pointer-events: none;
+      }
+      .skill-badge {
+        clip-path: polygon(10% 0, 100% 0, 90% 100%, 0 100%);
+      }
+      .stat-label {
+        font-size: 0.65rem;
+        letter-spacing: 0.1em;
+      }
+      .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+      .custom-scrollbar::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); }
+      .custom-scrollbar::-webkit-scrollbar-thumb { background: var(--primary); border-radius: 10px; }
+      .stat-bar {
+        height: 100%;
+        border-radius: 4px;
+        transition: width 0.5s ease;
+      }
+    </style>
   </head>
-  <body class="bg-gray-50 text-gray-900 antialiased">
+  <body class="min-h-screen text-white selection:bg-[#afff00] selection:text-black">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>
