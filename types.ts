@@ -13,6 +13,7 @@ export interface Player {
   skill: number; // Represents the Average Skill (Overall)
   positions: Position[]; // Derived: The position(s) with the highest skill
   positionSkills: PositionSkillMap; // Specific skill for each position (Mandatory)
+  stamina?: number; // 0-10, optional. How much the player can run/last the full match
 }
 
 export interface Team {

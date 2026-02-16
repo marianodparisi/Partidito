@@ -23,7 +23,8 @@ export const dbGetPlayers = async (): Promise<Player[]> => {
     name: p.name,
     skill: p.skill,
     positions: p.positions,
-    positionSkills: p.position_skills
+    positionSkills: p.position_skills,
+    ...(p.stamina != null && { stamina: p.stamina }),
   }));
 };
 
@@ -39,7 +40,8 @@ export const dbAddPlayer = async (player: Player): Promise<void> => {
       name: player.name,
       skill: player.skill,
       positions: player.positions,
-      position_skills: player.positionSkills
+      position_skills: player.positionSkills,
+      stamina: player.stamina ?? null,
     });
 
   if (error) {
@@ -59,6 +61,7 @@ export const dbUpdatePlayer = async (player: Player): Promise<void> => {
       skill: player.skill,
       positions: player.positions,
       position_skills: player.positionSkills,
+      stamina: player.stamina ?? null,
       updated_at: new Date().toISOString()
     })
     .eq('id', player.id)

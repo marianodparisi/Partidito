@@ -8,7 +8,7 @@ import { Modal, ModalConfig } from './components/Modal';
 import { AuthModal } from './components/AuthModal';
 import {
   IconUsers, IconPlus, IconRefresh, IconActivity,
-  IconGoal, IconShield, IconSword, IconCopy, IconHistory, IconSave, IconTrash, IconEdit, IconSoccerBall
+  IconGoal, IconShield, IconSword, IconCopy, IconHistory, IconSave, IconTrash, IconEdit, IconSoccerBall, IconHeart
 } from './components/Icons';
 
 function App() {
@@ -34,9 +34,11 @@ function App() {
     [Position.MID]: 1,
     [Position.FWD]: 1,
   });
-  
+  const [newStamina, setNewStamina] = useState<number | null>(null);
+
   const nameInputRef = useRef<HTMLInputElement>(null);
   const [activeTab, setActiveTab] = useState<'roster' | 'match' | 'history'>('roster');
+  const [useStaminaInMatch, setUseStaminaInMatch] = useState(false);
 
   // Modal State
   const [modal, setModal] = useState<ModalConfig>({
@@ -208,16 +210,19 @@ function App() {
     const maxSkill = Math.max(...(Object.values(positionSkills) as number[]));
     const mainPositions = (Object.keys(positionSkills) as Position[]).filter(p => positionSkills[p] === maxSkill);
 
+    const staminaValue = newStamina ?? undefined;
+
     if (editingPlayerId) {
       // Update existing
       setPlayers(prev => prev.map(p => {
         if (p.id === editingPlayerId) {
-            const updated = {
+            const updated: Player = {
                 ...p,
                 name: newName,
                 skill: avgSkill,
                 positions: mainPositions,
-                positionSkills: { ...positionSkills }
+                positionSkills: { ...positionSkills },
+                stamina: staminaValue,
             };
             if (user) dbUpdatePlayer(updated);
             return updated;
@@ -232,13 +237,14 @@ function App() {
         name: newName,
         skill: avgSkill,
         positions: mainPositions,
-        positionSkills: positionSkills
+        positionSkills: positionSkills,
+        stamina: staminaValue,
       };
 
       setPlayers(prev => [newPlayer, ...prev]);
       if (user) await dbAddPlayer(newPlayer);
     }
-    
+
     // Reset Form
     setNewName('');
     setPositionSkills({
@@ -247,14 +253,15 @@ function App() {
       [Position.MID]: 1,
       [Position.FWD]: 1,
     });
+    setNewStamina(null);
   };
 
   const startEditing = (player: Player) => {
     setNewName(player.name);
     setPositionSkills({ ...player.positionSkills });
+    setNewStamina(player.stamina ?? null);
     setEditingPlayerId(player.id);
-    setActiveTab('roster'); // Switch to roster tab if not active
-    // Scroll to top to see form
+    setActiveTab('roster');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -267,6 +274,7 @@ function App() {
         [Position.MID]: 1,
         [Position.FWD]: 1,
     });
+    setNewStamina(null);
   };
 
   const handleSkillChange = (pos: Position, value: number) => {
@@ -332,7 +340,7 @@ function App() {
       showAlert("Jugadores Insuficientes", "Necesitas seleccionar al menos 2 jugadores para armar equipos.");
       return;
     }
-    const result = generateBalancedTeams(availablePlayers);
+    const result = generateBalancedTeams(availablePlayers, useStaminaInMatch);
     setMatchResult(result);
   };
 
@@ -408,11 +416,11 @@ ${result.teamB.players.map(p => p.name).join('\n')}
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
 
       {/* Header */}
-      <header className="bg-white sticky top-0 z-10 border-b border-gray-200 shadow-sm">
+      <header className="bg-white sticky top-0 z-10 border-b border-gray-200 shadow-md">
         <div className="max-w-4xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-pitch-500 rounded-lg flex items-center justify-center text-white">
-              <IconSoccerBall className="w-5 h-5" />
+            <div className="w-8 h-8 rounded-full overflow-hidden flex-shrink-0">
+              <img src="/icons/logo.png" alt="Partidito" className="w-full h-full object-cover scale-125" />
             </div>
             <h1 className="text-xl font-bold text-gray-900 tracking-tight">Partidito</h1>
             {user?.email && (
@@ -540,6 +548,47 @@ ${result.teamB.players.map(p => p.name).join('\n')}
                    </div>
                 </div>
 
+                {/* Stamina (optional) */}
+                <div className="md:col-span-12">
+                  <div className="flex items-center gap-3 mb-2">
+                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">Cardio / Resistencia</label>
+                    <span className="text-[10px] text-gray-400">(opcional)</span>
+                    {newStamina === null ? (
+                      <button
+                        type="button"
+                        onClick={() => setNewStamina(5)}
+                        className="text-xs text-pitch-600 hover:text-pitch-700 font-medium underline"
+                      >
+                        Agregar
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setNewStamina(null)}
+                        className="text-xs text-red-500 hover:text-red-600 font-medium underline"
+                      >
+                        Quitar
+                      </button>
+                    )}
+                  </div>
+                  {newStamina !== null && (
+                    <div className="p-3 rounded-xl border border-orange-100 bg-white shadow-sm flex items-center gap-3">
+                      <IconHeart className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                      <input
+                        type="range"
+                        min="0"
+                        max="10"
+                        step="0.5"
+                        value={newStamina}
+                        onPointerDown={() => nameInputRef.current?.blur()}
+                        onChange={(e) => setNewStamina(parseFloat(e.target.value))}
+                        className="w-full h-2 bg-gray-100 rounded-lg appearance-none cursor-pointer accent-orange-500"
+                      />
+                      <span className="text-sm font-bold text-orange-600 w-8 text-right">{newStamina}</span>
+                    </div>
+                  )}
+                </div>
+
                 {/* Submit Buttons */}
                 <div className="md:col-span-12 mt-2 flex gap-3">
                   {editingPlayerId && (
@@ -628,7 +677,19 @@ ${result.teamB.players.map(p => p.name).join('\n')}
                       <span className="text-sm font-medium text-gray-600">Seleccionados: {selectedPlayerIds.size}</span>
                       <span className="text-sm font-medium text-gray-600">Tamaño: {Math.floor(selectedPlayerIds.size / 2)} vs {Math.ceil(selectedPlayerIds.size / 2)}</span>
                    </div>
-                   <button 
+                   {players.some(p => p.stamina != null) && (
+                     <label className="flex items-center gap-2 mb-4 cursor-pointer select-none">
+                       <input
+                         type="checkbox"
+                         checked={useStaminaInMatch}
+                         onChange={(e) => setUseStaminaInMatch(e.target.checked)}
+                         className="w-4 h-4 rounded border-gray-300 text-orange-500 accent-orange-500"
+                       />
+                       <IconHeart className="w-4 h-4 text-orange-500" />
+                       <span className="text-sm font-medium text-gray-700">Considerar cardio en el balance</span>
+                     </label>
+                   )}
+                   <button
                     onClick={generateMatch}
                     disabled={selectedPlayerIds.size < 2}
                     className="w-full py-4 bg-gray-900 hover:bg-black text-white text-lg font-bold rounded-xl transition-all shadow-xl disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"

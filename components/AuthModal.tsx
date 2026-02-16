@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { signInWithGoogle, signInWithEmail } from '../utils/auth';
-import { IconSoccerBall, IconCheck, IconX } from './Icons';
+import { IconCheck, IconX } from './Icons';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -104,9 +104,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                 <>
                   {/* Logo y Título */}
                   <div className="text-center mb-8">
-                    <div className="w-16 h-16 bg-pitch-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
-                      <IconSoccerBall className="w-10 h-10 text-white" />
-                    </div>
+                    <img src="/icons/logo.png" alt="Partidito" className="w-16 h-16 mx-auto mb-4" />
                     <h2 className="text-2xl font-bold text-gray-900 mb-2">Iniciar sesión</h2>
                     <p className="text-gray-600 text-sm">Guarda tus jugadores, partidos e historial en la nube</p>
                   </div>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Player, Position } from '../types';
-import { IconShield, IconGoal, IconSword, IconActivity, IconTrash, IconEdit } from './Icons';
+import { IconShield, IconGoal, IconSword, IconActivity, IconTrash, IconEdit, IconHeart } from './Icons';
 
 interface PlayerCardProps {
   player: Player;
@@ -113,7 +113,7 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
       </div>
 
       {/* Skills Grid */}
-      <div className="grid grid-cols-4 gap-1 w-full bg-gray-50 rounded-lg p-2 border border-gray-100">
+      <div className={`grid gap-1 w-full bg-gray-50 rounded-lg p-2 border border-gray-100 ${player.stamina != null ? 'grid-cols-5' : 'grid-cols-4'}`}>
         {[Position.GK, Position.DEF, Position.MID, Position.FWD].map(pos => {
           const val = player.positionSkills[pos] || 0;
           return (
@@ -123,6 +123,12 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({
             </div>
           );
         })}
+        {player.stamina != null && (
+          <div className="flex flex-col items-center justify-center">
+            <IconHeart className="w-3 h-3 text-orange-400 mb-0.5" />
+            <span className={`text-sm ${getSkillColor(player.stamina)}`}>{player.stamina}</span>
+          </div>
+        )}
       </div>
     </div>
   );
