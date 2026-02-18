@@ -1,0 +1,81 @@
+- generic [ref=e3]:
+  - navigation [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - generic [ref=e8]: sports_soccer
+        - generic [ref=e9]: Partidito
+      - generic [ref=e10]:
+        - button "Jugadores" [ref=e11] [cursor=pointer]
+        - button "Partido" [ref=e12] [cursor=pointer]
+        - button "Historial" [ref=e13] [cursor=pointer]
+      - button "Login" [ref=e15] [cursor=pointer]
+  - main [ref=e16]:
+    - generic [ref=e17]:
+      - generic [ref=e19]:
+        - generic [ref=e20]:
+          - heading "System // Roster_Management" [level=2] [ref=e21]
+          - heading "Dashboard" [level=1] [ref=e22]
+        - generic [ref=e23]:
+          - paragraph [ref=e24]: "STATUS: OPERATIONAL"
+          - paragraph [ref=e25]: "PLAYERS_COUNT: 0"
+      - generic [ref=e26]:
+        - generic [ref=e27]: 001_PLAYER_ID
+        - generic [ref=e28]:
+          - generic [ref=e29]:
+            - generic [ref=e30]: person_add
+            - heading "Nuevo Jugador" [level=3] [ref=e31]
+          - textbox "INGRESE NOMBRE" [ref=e33]
+      - heading "Habilidades_Core" [level=4] [ref=e35]: Habilidades_Core
+      - generic [ref=e37]:
+        - generic: front_hand
+        - generic [ref=e38]:
+          - generic [ref=e39]:
+            - generic [ref=e40]: front_hand
+            - generic [ref=e41]: Arquero
+          - generic: "01"
+        - slider [ref=e43]: "1"
+      - generic [ref=e44]:
+        - generic: shield
+        - generic [ref=e45]:
+          - generic [ref=e46]:
+            - generic [ref=e47]: shield
+            - generic [ref=e48]: Defensa
+          - generic: "01"
+        - slider [ref=e50]: "1"
+      - generic [ref=e51]:
+        - generic: show_chart
+        - generic [ref=e52]:
+          - generic [ref=e53]:
+            - generic [ref=e54]: show_chart
+            - generic [ref=e55]: Medio
+          - generic: "01"
+        - slider [ref=e57]: "1"
+      - generic [ref=e58]:
+        - generic: swords
+        - generic [ref=e59]:
+          - generic [ref=e60]:
+            - generic [ref=e61]: swords
+            - generic [ref=e62]: Ofensa
+          - generic: "01"
+        - slider [ref=e64]: "1"
+      - generic [ref=e65]:
+        - generic [ref=e66]:
+          - generic [ref=e68]: favorite
+          - generic [ref=e69]:
+            - heading "Cardio / Resistencia" [level=3] [ref=e70]
+            - paragraph [ref=e71]: ENDURANCE_LEVEL_CHECK
+        - button "Agregar" [ref=e72] [cursor=pointer]
+      - generic [ref=e73]:
+        - generic [ref=e74]: terminal
+        - generic [ref=e75]:
+          - generic [ref=e76]: "SYSTEM_TIP:"
+          - paragraph [ref=e77]: Equilibra las habilidades para optimizar la generación de equipos. El algoritmo requiere datos precisos.
+      - button "add_box Agregar Jugador chevron_right" [disabled] [ref=e79]:
+        - generic [ref=e80]: add_box
+        - generic [ref=e81]: Agregar Jugador
+        - generic [ref=e82]: chevron_right
+      - generic [ref=e83]:
+        - generic [ref=e84]: group_off
+        - paragraph [ref=e85]: No hay jugadores creados aún
+  - contentinfo [ref=e86]:
+    - paragraph [ref=e88]: Partidito // Engine v2.0 // Zero Gravity UI

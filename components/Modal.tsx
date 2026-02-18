@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { IconX, IconCheck, IconTrash, IconAlert } from './Icons';
 
 export interface ModalConfig {
   isOpen: boolean;
@@ -33,10 +32,9 @@ export const Modal: React.FC<ModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setVisible(true);
-      // Prevent body scroll
       document.body.style.overflow = 'hidden';
     } else {
-      const timer = setTimeout(() => setVisible(false), 200); // Wait for animation
+      const timer = setTimeout(() => setVisible(false), 200);
       document.body.style.overflow = '';
       return () => clearTimeout(timer);
     }
@@ -57,63 +55,77 @@ export const Modal: React.FC<ModalProps> = ({
   const getIcon = () => {
     switch (type) {
       case 'confirm':
-        return <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10"><IconTrash className="h-6 w-6 text-red-600" /></div>;
+        return (
+          <div className="w-12 h-12 bg-red-500/20 border border-red-500/30 flex items-center justify-center">
+            <span className="material-symbols-outlined text-red-500 text-2xl">delete</span>
+          </div>
+        );
       case 'success':
-        return <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-green-100 sm:mx-0 sm:h-10 sm:w-10"><IconCheck className="h-6 w-6 text-green-600" /></div>;
+        return (
+          <div className="w-12 h-12 bg-[var(--primary)]/20 border border-[var(--primary)]/30 flex items-center justify-center">
+            <span className="material-symbols-outlined text-[var(--primary)] text-2xl">check_circle</span>
+          </div>
+        );
       case 'alert':
       default:
-        return <div className="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-yellow-100 sm:mx-0 sm:h-10 sm:w-10"><IconAlert className="h-6 w-6 text-yellow-600" /></div>;
+        return (
+          <div className="w-12 h-12 bg-yellow-500/20 border border-yellow-500/30 flex items-center justify-center">
+            <span className="material-symbols-outlined text-yellow-500 text-2xl">warning</span>
+          </div>
+        );
+    }
+  };
+
+  const getConfirmClasses = () => {
+    switch (type) {
+      case 'confirm':
+        return 'bg-red-600 hover:bg-red-500 text-white';
+      case 'success':
+        return 'bg-[var(--primary)] hover:brightness-110 text-black font-black';
+      case 'alert':
+      default:
+        return 'bg-[var(--primary)] hover:brightness-110 text-black font-black';
     }
   };
 
   return (
     <div className={`relative z-50 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'} transition-opacity duration-200`}>
-      {/* Backdrop */}
-      <div 
-        className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm transition-opacity" 
+      <div
+        className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity"
         onClick={handleCancel}
       />
 
-      {/* Modal Panel */}
       <div className="fixed inset-0 z-10 overflow-y-auto">
         <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-          <div className={`relative transform overflow-hidden rounded-2xl bg-white text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg ${isOpen ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4 sm:translate-y-0 sm:scale-95'} duration-200`}>
-            
-            <div className="bg-white px-4 pb-4 pt-5 sm:p-6 sm:pb-4">
-              <div className="sm:flex sm:items-start">
+          <div className={`relative transform overflow-hidden glass-card text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-lg ${isOpen ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'} duration-200`}>
+
+            <div className="p-6 sm:p-8">
+              <div className="flex items-start gap-4">
                 {getIcon()}
-                <div className="mt-3 text-center sm:ml-4 sm:mt-0 sm:text-left w-full">
-                  <h3 className="text-lg font-semibold leading-6 text-gray-900" id="modal-title">
+                <div className="flex-1">
+                  <h3 className="display-font text-xl font-black uppercase italic text-white mb-2">
                     {title}
                   </h3>
-                  <div className="mt-2">
-                    <p className="text-sm text-gray-500">
-                      {message}
-                    </p>
-                  </div>
+                  <p className="mono-font text-sm text-white/60 uppercase tracking-tight">
+                    {message}
+                  </p>
                 </div>
               </div>
             </div>
-            
-            <div className="bg-gray-50 px-4 py-3 sm:flex sm:flex-row-reverse sm:px-6 gap-2">
+
+            <div className="border-t border-white/5 p-4 sm:p-6 flex flex-row-reverse gap-3">
               <button
                 type="button"
-                className={`inline-flex w-full justify-center rounded-lg px-3 py-2 text-sm font-semibold text-white shadow-sm sm:w-auto ${
-                  type === 'confirm' 
-                    ? 'bg-red-600 hover:bg-red-500' 
-                    : type === 'success' 
-                      ? 'bg-pitch-600 hover:bg-pitch-500' 
-                      : 'bg-blue-600 hover:bg-blue-500'
-                }`}
+                className={`mono-font text-xs font-bold uppercase tracking-widest px-6 py-3 transition-all ${getConfirmClasses()}`}
                 onClick={handleConfirm}
               >
                 {confirmText || 'Aceptar'}
               </button>
-              
+
               {type === 'confirm' && (
                 <button
                   type="button"
-                  className="mt-3 inline-flex w-full justify-center rounded-lg bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 sm:mt-0 sm:w-auto"
+                  className="mono-font text-xs font-bold uppercase tracking-widest px-6 py-3 text-white/50 border border-white/10 hover:border-white/30 hover:text-white transition-all"
                   onClick={handleCancel}
                 >
                   {cancelText || 'Cancelar'}
@@ -121,12 +133,11 @@ export const Modal: React.FC<ModalProps> = ({
               )}
             </div>
 
-            {/* Close X */}
-            <button 
-                onClick={handleCancel}
-                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+            <button
+              onClick={handleCancel}
+              className="absolute top-4 right-4 text-white/30 hover:text-white transition-colors"
             >
-                <IconX className="w-5 h-5" />
+              <span className="material-symbols-outlined">close</span>
             </button>
           </div>
         </div>

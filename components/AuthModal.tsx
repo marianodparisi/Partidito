@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { signInWithGoogle, signInWithEmail } from '../utils/auth';
-import { IconCheck, IconX } from './Icons';
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -64,53 +63,53 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   return (
     <div className={`fixed inset-0 z-50 ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'} transition-opacity duration-200`}>
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal */}
       <div className="fixed inset-0 z-10 overflow-y-auto">
         <div className="flex min-h-full items-center justify-center p-4">
           <div className={`relative w-full max-w-md transform transition-all duration-200 ${isOpen ? 'scale-100 translate-y-0' : 'scale-95 translate-y-4'}`}>
-            <div className="bg-white rounded-2xl shadow-2xl p-8 relative">
+            <div className="glass-card p-8 relative">
               {/* Close button */}
               <button
                 onClick={onClose}
-                className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"
+                className="absolute top-4 right-4 text-white/30 hover:text-white transition-colors"
               >
-                <IconX className="w-5 h-5" />
+                <span className="material-symbols-outlined">close</span>
               </button>
 
               {emailSent ? (
-                <>
-                  <div className="text-center">
-                    <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                      <IconCheck className="w-8 h-8 text-green-600" />
-                    </div>
-                    <h2 className="text-2xl font-bold text-gray-900 mb-4">¡Revisa tu email!</h2>
-                    <p className="text-gray-600 mb-6">
-                      Te enviamos un enlace mágico a <strong>{email}</strong>. Haz clic en el enlace para iniciar sesión.
-                    </p>
-                    <button
-                      onClick={() => {
-                        setEmailSent(false);
-                        setEmail('');
-                      }}
-                      className="text-pitch-600 hover:text-pitch-700 font-medium"
-                    >
-                      Volver
-                    </button>
+                <div className="text-center">
+                  <div className="w-16 h-16 bg-[var(--primary)]/20 border border-[var(--primary)]/30 flex items-center justify-center mx-auto mb-6">
+                    <span className="material-symbols-outlined text-[var(--primary)] text-3xl">check_circle</span>
                   </div>
-                </>
+                  <h2 className="display-font text-2xl font-black uppercase italic text-white mb-4">¡Revisa tu email!</h2>
+                  <p className="mono-font text-white/60 text-sm uppercase tracking-tight mb-6">
+                    Te enviamos un enlace mágico a <strong className="text-[var(--primary)]">{email}</strong>. Haz clic en el enlace para iniciar sesión.
+                  </p>
+                  <button
+                    onClick={() => {
+                      setEmailSent(false);
+                      setEmail('');
+                    }}
+                    className="mono-font text-[var(--primary)] text-xs font-bold uppercase tracking-widest hover:opacity-80"
+                  >
+                    Volver
+                  </button>
+                </div>
               ) : (
                 <>
                   {/* Logo y Título */}
                   <div className="text-center mb-8">
-                    <img src="/icons/logo.png" alt="Partidito" className="w-16 h-16 mx-auto mb-4" />
-                    <h2 className="text-2xl font-bold text-gray-900 mb-2">Iniciar sesión</h2>
-                    <p className="text-gray-600 text-sm">Guarda tus jugadores, partidos e historial en la nube</p>
+                    <div className="bg-[var(--primary)] p-3 rounded-sm rotate-3 inline-block mb-4">
+                      <span className="material-symbols-outlined text-black font-bold text-3xl block">sports_soccer</span>
+                    </div>
+                    <h2 className="display-font text-2xl font-black uppercase italic text-white mb-2">Iniciar sesión</h2>
+                    <p className="mono-font text-white/40 text-xs uppercase tracking-wider">Guarda tus jugadores y partidos en la nube</p>
                   </div>
 
                   {error && (
-                    <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+                    <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 text-red-400 mono-font text-xs uppercase tracking-wider">
                       {error}
                     </div>
                   )}
@@ -119,7 +118,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                   <button
                     onClick={handleGoogleSignIn}
                     disabled={loading}
-                    className="w-full mb-4 py-3 px-4 bg-white border-2 border-gray-300 rounded-xl font-semibold text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm hover:shadow"
+                    className="w-full mb-4 py-4 px-4 bg-white/5 border border-white/10 text-white font-bold hover:bg-white/10 hover:border-white/20 transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed mono-font text-xs uppercase tracking-widest"
                   >
                     <svg className="w-5 h-5" viewBox="0 0 24 24">
                       <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -132,17 +131,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
                   <div className="relative mb-4">
                     <div className="absolute inset-0 flex items-center">
-                      <div className="w-full border-t border-gray-300"></div>
+                      <div className="w-full border-t border-white/10"></div>
                     </div>
                     <div className="relative flex justify-center text-sm">
-                      <span className="px-2 bg-white text-gray-500">o</span>
+                      <span className="px-2 bg-[var(--card-bg-dark)] text-white/30 mono-font text-xs uppercase">o</span>
                     </div>
                   </div>
 
                   {/* Email Sign In */}
                   <form onSubmit={handleEmailSignIn} className="space-y-4">
                     <div>
-                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      <label className="block mono-font text-xs font-bold text-white/40 uppercase tracking-widest mb-2">
                         Email
                       </label>
                       <input
@@ -151,14 +150,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="tu@email.com"
                         disabled={loading}
-                        className="w-full px-4 py-3 rounded-xl bg-gray-50 border border-gray-200 text-gray-900 placeholder-gray-400 focus:bg-white focus:border-pitch-500 focus:ring-2 focus:ring-pitch-100 outline-none transition-all disabled:opacity-50"
+                        className="w-full px-4 py-3 bg-white/5 border border-white/10 text-white placeholder:text-white/20 focus:border-[var(--primary)] focus:ring-0 outline-none transition-all disabled:opacity-50 mono-font"
                         autoComplete="email"
                       />
                     </div>
                     <button
                       type="submit"
                       disabled={loading || !email.trim()}
-                      className="w-full py-3 bg-pitch-600 hover:bg-pitch-500 text-white font-bold rounded-xl transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="w-full py-4 bg-[var(--primary)] text-black font-black uppercase tracking-widest transition-all neon-glow disabled:opacity-50 disabled:cursor-not-allowed mono-font text-xs"
                     >
                       {loading ? 'Enviando...' : 'Enviar enlace mágico'}
                     </button>

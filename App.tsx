@@ -33,6 +33,7 @@ function App() {
   const [newStamina, setNewStamina] = useState<number | null>(null);
 
   const nameInputRef = useRef<HTMLInputElement>(null);
+  const initialLoadDone = useRef(false);
   const [activeTab, setActiveTab] = useState<'roster' | 'match' | 'history'>('roster');
   const [useStaminaInMatch, setUseStaminaInMatch] = useState(false);
 
@@ -385,7 +386,7 @@ ${result.teamB.players.map(p => p.name).join('\n')}
     red: 'border-red-500 text-red-500',
   };
 
-  if (authLoading || isLoading) {
+  if (!initialLoadDone.current && (authLoading || isLoading)) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4">
         <div className="bg-[var(--primary)] p-3 rounded-sm rotate-3">
@@ -396,9 +397,12 @@ ${result.teamB.players.map(p => p.name).join('\n')}
       </div>
     );
   }
+  if (!authLoading && !isLoading) {
+    initialLoadDone.current = true;
+  }
 
   return (
-    <div className="min-h-screen pb-20">
+    <div className="min-h-screen pb-24 md:pb-20">
       <Modal
         isOpen={modal.isOpen}
         onClose={closeModal}
@@ -407,13 +411,13 @@ ${result.teamB.players.map(p => p.name).join('\n')}
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
 
       {/* Navbar */}
-      <nav className="sticky top-0 z-50 bg-black/80 backdrop-blur-xl border-b border-white/10 px-6 py-4">
+      <nav className="sticky top-0 z-50 bg-black/80 backdrop-blur-xl border-b border-white/10 px-3 py-2 md:px-6 md:py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="bg-[var(--primary)] p-2 rounded-sm rotate-3">
-              <span className="material-symbols-outlined text-black font-bold block">sports_soccer</span>
+          <div className="flex items-center gap-2 md:gap-4">
+            <div className="bg-[var(--primary)] p-0.5 md:p-2 rounded-sm rotate-3">
+              <span className="material-symbols-outlined text-black font-bold block text-sm md:text-2xl">sports_soccer</span>
             </div>
-            <span className="display-font font-black text-2xl tracking-tighter uppercase italic">Partidito</span>
+            <span className="display-font font-black text-lg md:text-2xl tracking-tighter uppercase italic">Partidito</span>
           </div>
           <div className="hidden md:flex items-center gap-1 mono-font bg-white/5 p-1 rounded-sm">
             <button
@@ -466,7 +470,7 @@ ${result.teamB.players.map(p => p.name).join('\n')}
       </nav>
 
       {/* Mobile Tab Bar */}
-      <div className="md:hidden sticky top-[65px] z-40 bg-black/90 backdrop-blur-xl border-b border-white/10 px-4 py-2">
+      <div className="md:hidden sticky top-[41px] z-40 bg-black/90 backdrop-blur-xl border-b border-white/10 px-3 py-1.5">
         <div className="flex items-center gap-1 mono-font bg-white/5 p-1 rounded-sm">
           <button
             onClick={() => setActiveTab('roster')}
@@ -489,40 +493,45 @@ ${result.teamB.players.map(p => p.name).join('\n')}
         </div>
       </div>
 
-      <main className="max-w-7xl mx-auto p-6 lg:p-12">
+      <main className="max-w-7xl mx-auto p-4 md:p-6 lg:p-12">
 
         {/* ==================== ROSTER TAB ==================== */}
         {activeTab === 'roster' && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 md:gap-6">
             {/* Header */}
-            <div className="md:col-span-4 mb-4">
+            <div className="md:col-span-4 mb-0 md:mb-4">
               <div className="flex items-end justify-between">
                 <div>
-                  <h2 className="mono-font text-[var(--primary)] text-sm font-bold uppercase tracking-[0.3em] mb-2">System // Roster_Management</h2>
-                  <h1 className="display-font text-5xl md:text-7xl font-black uppercase italic tracking-tighter">
+                  <h2 className="mono-font text-[var(--primary)] text-[9px] md:text-sm font-bold uppercase tracking-[0.3em] mb-0.5 md:mb-2">
+                    {editingPlayerId ? 'PLAYER_EDIT_V2' : 'PLAYER_ADD_V2'}
+                  </h2>
+                  <h1 className="display-font text-3xl md:text-7xl font-black uppercase italic tracking-tighter">
                     {editingPlayerId ? 'Editar' : 'Dashboard'}
                   </h1>
                 </div>
-                <div className="text-right hidden md:block">
-                  <p className="mono-font text-white/30 text-xs">STATUS: OPERATIONAL</p>
-                  <p className="mono-font text-[var(--primary)] text-xs font-bold">
-                    PLAYERS_COUNT: {players.length}
+                <div className="text-right">
+                  <p className="mono-font text-[var(--primary)] text-[10px] md:text-xs font-bold">
+                    TEAM_SKILL: {players.length > 0 ? (players.reduce((s, p) => s + p.skill, 0) / players.length).toFixed(1) : '0'}
+                  </p>
+                  <p className="mono-font text-white/30 text-[8px] md:text-xs hidden md:block">STATUS: OPERATIONAL</p>
+                  <p className="mono-font text-white/30 text-[8px] md:hidden uppercase">
+                    {players.length} jugadores
                   </p>
                 </div>
               </div>
             </div>
 
             {/* Name Input Card */}
-            <div className="md:col-span-4 glass-card p-10 rounded-none border-l-[12px] border-[var(--primary)] relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-4 mono-font text-[var(--primary)] opacity-20 text-xs">
+            <div className="md:col-span-4 glass-card p-3 md:p-10 rounded-none border-l-4 md:border-l-[12px] border-[var(--primary)] relative overflow-hidden group">
+              <div className="absolute top-0 right-0 p-2 md:p-4 mono-font text-[var(--primary)] opacity-20 text-[8px] md:text-xs">
                 {editingPlayerId ? 'EDIT_MODE' : '001_PLAYER_ID'}
               </div>
-              <div className="flex flex-col gap-6 relative z-10">
-                <div className="flex items-center gap-4">
-                  <span className="material-symbols-outlined text-[var(--primary)] text-4xl">
+              <div className="flex flex-col gap-2 md:gap-6 relative z-10">
+                <div className="flex items-center gap-1.5 md:gap-4">
+                  <span className="material-symbols-outlined text-[var(--primary)] text-sm md:text-4xl">
                     {editingPlayerId ? 'edit' : 'person_add'}
                   </span>
-                  <h3 className="display-font text-3xl font-black uppercase italic">
+                  <h3 className="display-font text-xs md:text-3xl font-black uppercase italic">
                     {editingPlayerId ? 'Editando Jugador' : 'Nuevo Jugador'}
                   </h3>
                 </div>
@@ -532,58 +541,77 @@ ${result.teamB.players.map(p => p.name).join('\n')}
                     type="text"
                     value={newName}
                     onChange={e => setNewName(e.target.value)}
-                    placeholder="INGRESE NOMBRE"
+                    placeholder="NOMBRE..."
                     autoComplete="off"
-                    className="w-full text-3xl md:text-5xl bg-white/5 border-b-4 border-white/10 border-t-0 border-x-0 p-6 text-white placeholder:text-white/10 focus:ring-0 focus:border-[var(--primary)] transition-all uppercase font-black italic display-font"
+                    className="w-full text-lg md:text-5xl bg-white/5 border border-white/10 md:border-b-4 md:border-t-0 md:border-x-0 px-3 py-2 md:p-6 text-white placeholder:text-white/10 focus:ring-0 focus:outline-none focus:border-[var(--primary)]/50 md:focus:border-[var(--primary)] transition-all uppercase font-black italic display-font tracking-tight"
                   />
                 </form>
               </div>
             </div>
 
             {/* Skills Section Header */}
-            <div className="md:col-span-4 mt-8">
-              <h4 className="mono-font text-[var(--primary)] text-xs font-bold uppercase tracking-[0.4em] mb-6 flex items-center gap-4">
-                <span className="h-px w-12 bg-[var(--primary)]"></span>
-                Habilidades_Core
+            <div className="md:col-span-4 mt-2 md:mt-8">
+              <h4 className="mono-font text-[var(--primary)] text-[9px] md:text-xs font-bold uppercase tracking-[0.4em] flex items-center gap-2 md:gap-4">
+                <span className="h-px w-8 md:w-12 bg-[var(--primary)]"></span>
+                CORE_SKILLS
               </h4>
             </div>
 
-            {/* Skill Cards */}
-            {skillPositionConfig.map(({ pos, label, icon, color }) => {
-              const val = positionSkills[pos];
-              const padded = String(Math.round(val)).padStart(2, '0');
-              return (
-                <div
-                  key={pos}
-                  className={`glass-card bento-card p-6 min-h-[220px] flex flex-col justify-between relative overflow-hidden group border-t-4 ${posColorMap[color].split(' ')[0]}`}
-                >
-                  <span className="material-symbols-outlined bg-player-silhouette">{icon}</span>
-                  <div className="relative z-10">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className={`material-symbols-outlined text-xl ${posColorMap[color].split(' ')[1]}`}>{icon}</span>
-                      <span className="mono-font text-xs font-bold uppercase tracking-wider text-white/70">{label}</span>
+            {/* Skill Cards - Mobile: 2-col compact, Desktop: 4-col bento */}
+            <div className="md:col-span-4 grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-6">
+              {skillPositionConfig.map(({ pos, label, icon, color }) => {
+                const val = positionSkills[pos];
+                const padded = String(Math.round(val)).padStart(2, '0');
+                const shortLabel = { [Position.GK]: 'GK', [Position.DEF]: 'DF', [Position.MID]: 'MF', [Position.FWD]: 'ATK' }[pos];
+                return (
+                  <div
+                    key={pos}
+                    className={`glass-card bento-card p-3 md:p-6 h-24 md:h-auto md:min-h-[220px] flex flex-col justify-between relative overflow-hidden group border-t-2 md:border-t-4 ${posColorMap[color].split(' ')[0]}`}
+                  >
+                    <span className="hidden md:block material-symbols-outlined bg-player-silhouette">{icon}</span>
+                    {/* Desktop large number */}
+                    <div className="hidden md:block relative z-10">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`material-symbols-outlined text-xl ${posColorMap[color].split(' ')[1]}`}>{icon}</span>
+                        <span className="mono-font text-xs font-bold uppercase tracking-wider text-white/70">{label}</span>
+                      </div>
+                      <div className="skill-number display-font">{padded}</div>
                     </div>
-                    <div className="skill-number display-font">{padded}</div>
+                    {/* Mobile compact: icon + label */}
+                    <div className="md:hidden flex items-center gap-1 relative z-10">
+                      <span className={`material-symbols-outlined text-[14px] ${posColorMap[color].split(' ')[1]}`}>{icon}</span>
+                      <span className="mono-font text-[8px] font-bold uppercase tracking-wider text-white/50">{shortLabel}</span>
+                    </div>
+                    {/* Mobile: ghost number */}
+                    <div className="md:hidden absolute -right-1 -top-1 opacity-10 display-font font-black text-4xl italic leading-none pointer-events-none">{padded}</div>
+                    {/* Slider */}
+                    <div className="relative z-10 flex items-end gap-2">
+                      <input
+                        type="range"
+                        min="0"
+                        max="10"
+                        step="0.5"
+                        value={val}
+                        onPointerDown={() => nameInputRef.current?.blur()}
+                        onChange={(e) => handleSkillChange(pos, parseFloat(e.target.value))}
+                        className="w-full md:h-auto h-1"
+                      />
+                      <span className="md:hidden mono-font text-[10px] font-bold text-[var(--primary)] italic">{Math.round(val)}</span>
+                    </div>
                   </div>
-                  <div className="relative z-10">
-                    <input
-                      type="range"
-                      min="0"
-                      max="10"
-                      step="0.5"
-                      value={val}
-                      onPointerDown={() => nameInputRef.current?.blur()}
-                      onChange={(e) => handleSkillChange(pos, parseFloat(e.target.value))}
-                      className="w-full"
-                    />
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
 
-            {/* Stamina + Tip Row */}
-            <div className="md:col-span-2 glass-card p-8 flex flex-col md:flex-row items-center justify-between gap-6 border-r-4 border-rose-600">
-              <div className="flex items-center gap-6">
+            {/* Stamina Row */}
+            <div className="md:col-span-2 glass-card px-3 py-2 md:p-8 flex items-center justify-between gap-2 md:gap-6 md:flex-col md:items-stretch border-r-0 md:border-r-4 border-rose-600">
+              {/* Mobile: compact inline */}
+              <div className="flex items-center gap-2 md:hidden">
+                <span className="material-symbols-outlined text-rose-500 text-sm">favorite</span>
+                <span className="display-font font-bold italic text-[10px] uppercase tracking-tighter">Cardio / Resistencia</span>
+              </div>
+              {/* Desktop: full layout */}
+              <div className="hidden md:flex items-center gap-6">
                 <div className="p-4 bg-rose-600/20 text-rose-500 border border-rose-600/30">
                   <span className="material-symbols-outlined text-4xl block">favorite</span>
                 </div>
@@ -596,12 +624,12 @@ ${result.teamB.players.map(p => p.name).join('\n')}
                 <button
                   type="button"
                   onClick={() => setNewStamina(5)}
-                  className="mono-font text-[var(--primary)] text-xs font-bold uppercase tracking-widest border border-[var(--primary)] px-6 py-2 hover:bg-[var(--primary)] hover:text-black transition-all"
+                  className="mono-font text-[var(--primary)] text-[10px] md:text-xs font-bold uppercase tracking-widest border border-[var(--primary)] px-3 py-1 md:px-6 md:py-2 hover:bg-[var(--primary)] hover:text-black transition-all flex-shrink-0"
                 >
                   Agregar
                 </button>
               ) : (
-                <div className="flex items-center gap-4 flex-1 max-w-[200px]">
+                <div className="flex items-center gap-2 md:gap-4 flex-1 max-w-[200px]">
                   <input
                     type="range"
                     min="0"
@@ -610,9 +638,9 @@ ${result.teamB.players.map(p => p.name).join('\n')}
                     value={newStamina}
                     onPointerDown={() => nameInputRef.current?.blur()}
                     onChange={(e) => setNewStamina(parseFloat(e.target.value))}
-                    className="w-full"
+                    className="w-full h-1 md:h-auto"
                   />
-                  <span className="mono-font text-[var(--primary)] font-bold text-lg w-8 text-right">{newStamina}</span>
+                  <span className="mono-font text-[var(--primary)] font-bold text-sm md:text-lg w-6 md:w-8 text-right">{newStamina}</span>
                   <button
                     type="button"
                     onClick={() => setNewStamina(null)}
@@ -624,7 +652,8 @@ ${result.teamB.players.map(p => p.name).join('\n')}
               )}
             </div>
 
-            <div className="md:col-span-2 glass-card p-8 border border-white/5 flex items-start gap-5">
+            {/* Tip Card - desktop only */}
+            <div className="md:col-span-2 glass-card p-8 border border-white/5 hidden md:flex items-start gap-5">
               <span className="material-symbols-outlined text-[var(--primary)] text-3xl">terminal</span>
               <div>
                 <span className="mono-font text-[var(--primary)] text-xs font-bold block mb-1">SYSTEM_TIP:</span>
@@ -634,8 +663,8 @@ ${result.teamB.players.map(p => p.name).join('\n')}
               </div>
             </div>
 
-            {/* Submit Button */}
-            <div className="md:col-span-4 mt-6 flex gap-4">
+            {/* Submit Button - Desktop: inline, Mobile: fixed bottom */}
+            <div className="md:col-span-4 mt-6 hidden md:flex gap-4">
               {editingPlayerId && (
                 <button
                   type="button"
@@ -643,7 +672,7 @@ ${result.teamB.players.map(p => p.name).join('\n')}
                   className="flex-1 bg-white/5 border border-white/10 text-white/70 p-10 flex items-center justify-center gap-4 transition-all hover:bg-white/10 hover:border-white/20"
                 >
                   <span className="material-symbols-outlined text-3xl">close</span>
-                  <span className="display-font text-2xl md:text-4xl font-black uppercase italic tracking-tighter">Cancelar</span>
+                  <span className="display-font text-4xl font-black uppercase italic tracking-tighter">Cancelar</span>
                 </button>
               )}
               <button
@@ -655,7 +684,7 @@ ${result.teamB.players.map(p => p.name).join('\n')}
                 <span className="material-symbols-outlined font-black text-5xl">
                   {editingPlayerId ? 'save' : 'add_box'}
                 </span>
-                <span className="display-font text-3xl md:text-5xl font-black uppercase italic tracking-tighter">
+                <span className="display-font text-5xl font-black uppercase italic tracking-tighter">
                   {editingPlayerId ? 'Actualizar' : 'Agregar Jugador'}
                 </span>
                 <span className="material-symbols-outlined font-black text-5xl opacity-0 group-hover:opacity-100 transition-all translate-x-[-20px] group-hover:translate-x-0">chevron_right</span>
@@ -665,13 +694,26 @@ ${result.teamB.players.map(p => p.name).join('\n')}
             {/* Player List */}
             {players.length > 0 && (
               <>
-                <div className="md:col-span-4 mt-12">
-                  <h4 className="mono-font text-[var(--primary)] text-xs font-bold uppercase tracking-[0.4em] mb-6 flex items-center gap-4">
-                    <span className="h-px w-12 bg-[var(--primary)]"></span>
+                <div className="md:col-span-4 mt-4 md:mt-12">
+                  <h4 className="mono-font text-[var(--primary)] text-[9px] md:text-xs font-bold uppercase tracking-[0.4em] flex items-center gap-2 md:gap-4 mb-2 md:mb-6">
+                    <span className="h-px w-8 md:w-12 bg-[var(--primary)]"></span>
                     Plantel // {players.length}_Jugadores
                   </h4>
                 </div>
-                <div className="md:col-span-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* Mobile: compact list */}
+                <div className="md:col-span-4 md:hidden space-y-2">
+                  {players.map(player => (
+                    <PlayerCard
+                      key={player.id}
+                      player={player}
+                      onEdit={startEditing}
+                      onDelete={handleDeletePlayer}
+                      mobileCompact
+                    />
+                  ))}
+                </div>
+                {/* Desktop: bento grid */}
+                <div className="md:col-span-4 hidden md:grid md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {players.map(player => (
                     <PlayerCard
                       key={player.id}
@@ -695,17 +737,19 @@ ${result.teamB.players.map(p => p.name).join('\n')}
 
         {/* ==================== MATCH TAB ==================== */}
         {activeTab === 'match' && (
-          <div className="grid grid-cols-1 md:grid-cols-6 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-6 gap-4 md:gap-6">
             {/* Header */}
-            <div className="md:col-span-6 mb-4">
+            <div className="md:col-span-6 mb-0 md:mb-4">
               <div className="flex items-end justify-between">
                 <div>
-                  <h2 className="mono-font text-[var(--primary)] text-sm font-bold uppercase tracking-[0.3em] mb-2">DASHBOARD // MATCH_SETUP</h2>
-                  <h1 className="display-font text-5xl md:text-7xl font-black uppercase italic tracking-tighter">Armar Partido</h1>
+                  <h2 className="mono-font text-[var(--primary)] text-[9px] md:text-sm font-bold uppercase tracking-[0.3em] mb-0.5 md:mb-2">MATCH_SETUP</h2>
+                  <h1 className="display-font text-3xl md:text-7xl font-black uppercase italic tracking-tighter">Armar Partido</h1>
                 </div>
-                <div className="text-right hidden md:block">
-                  <p className="mono-font text-white/30 text-xs">MODE: COMPETITIVE_SQUAD</p>
-                  <p className="mono-font text-[var(--primary)] text-xs font-bold">ALGORITHM_READY: YES</p>
+                <div className="text-right">
+                  <p className="mono-font text-[var(--primary)] text-[10px] md:text-xs font-bold">
+                    {selectedPlayerIds.size}/{players.length} SEL
+                  </p>
+                  <p className="mono-font text-white/30 text-[8px] md:text-xs hidden md:block">MODE: COMPETITIVE_SQUAD</p>
                 </div>
               </div>
             </div>
@@ -713,21 +757,21 @@ ${result.teamB.players.map(p => p.name).join('\n')}
             {!matchResult ? (
               <>
                 {/* Selection Header */}
-                <div className="md:col-span-6 glass-card p-8 border-l-[12px] border-[var(--primary)] flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div>
-                    <h3 className="display-font text-2xl font-black uppercase italic">Selección de Plantilla</h3>
-                    <p className="mono-font text-white/40 text-sm mt-1 uppercase">Selecciona quiénes vinieron hoy para equilibrar los equipos</p>
+                <div className="md:col-span-6 glass-card p-3 md:p-8 border-l-4 md:border-l-[12px] border-[var(--primary)] flex items-center md:flex-row justify-between gap-2 md:gap-4">
+                  <div className="min-w-0">
+                    <h3 className="display-font text-sm md:text-2xl font-black uppercase italic">Selección de Plantilla</h3>
+                    <p className="mono-font text-white/40 text-[9px] md:text-sm mt-0.5 md:mt-1 uppercase truncate">Selecciona quiénes vinieron hoy</p>
                   </div>
                   <button
                     onClick={selectAll}
-                    className="mono-font text-[var(--primary)] text-sm font-bold uppercase tracking-widest border border-[var(--primary)] px-6 py-2 hover:bg-[var(--primary)] hover:text-black transition-all"
+                    className="mono-font text-[var(--primary)] text-[9px] md:text-sm font-bold uppercase tracking-widest border border-[var(--primary)] px-2 py-1 md:px-6 md:py-2 hover:bg-[var(--primary)] hover:text-black transition-all flex-shrink-0"
                   >
-                    {selectedPlayerIds.size === players.length ? 'Deseleccionar todos' : 'Seleccionar todos'}
+                    {selectedPlayerIds.size === players.length ? 'Ninguno' : 'Todos'}
                   </button>
                 </div>
 
                 {/* Player Selection Grid */}
-                <div className="md:col-span-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 max-h-[600px] overflow-y-auto pr-2 custom-scrollbar">
+                <div className="md:col-span-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 md:gap-6 max-h-[400px] md:max-h-[600px] overflow-y-auto pr-1 md:pr-2 custom-scrollbar">
                   {players.map(player => (
                     <PlayerCard
                       key={player.id}
@@ -738,30 +782,30 @@ ${result.teamB.players.map(p => p.name).join('\n')}
                     />
                   ))}
                   {players.length === 0 && (
-                    <div className="col-span-3 glass-card p-12 text-center border border-dashed border-white/10">
-                      <p className="mono-font text-white/30 text-sm uppercase tracking-wider">
-                        Agrega jugadores en la pestaña "Jugadores" primero
+                    <div className="col-span-3 glass-card p-8 md:p-12 text-center border border-dashed border-white/10">
+                      <p className="mono-font text-white/30 text-[10px] md:text-sm uppercase tracking-wider">
+                        Agrega jugadores en "Jugadores" primero
                       </p>
                     </div>
                   )}
                 </div>
 
                 {/* Stats Bar */}
-                <div className="md:col-span-3 glass-card p-6 border-t-4 border-[var(--primary)]">
+                <div className="md:col-span-3 glass-card p-3 md:p-6 border-t-4 border-[var(--primary)]">
                   <div className="flex justify-between items-center h-full">
-                    <div className="flex items-center gap-4">
-                      <span className="material-symbols-outlined text-[var(--primary)] text-3xl">group</span>
+                    <div className="flex items-center gap-2 md:gap-4">
+                      <span className="material-symbols-outlined text-[var(--primary)] text-xl md:text-3xl">group</span>
                       <div>
                         <p className="mono-font text-white/40 text-[10px] uppercase tracking-wider">Seleccionados</p>
-                        <p className="display-font font-black text-3xl italic">{selectedPlayerIds.size} / {players.length}</p>
+                        <p className="display-font font-black text-xl md:text-3xl italic">{selectedPlayerIds.size} / {players.length}</p>
                       </div>
                     </div>
-                    <div className="h-10 w-px bg-white/10"></div>
-                    <div className="flex items-center gap-4">
-                      <span className="material-symbols-outlined text-[var(--primary)] text-3xl">grid_view</span>
+                    <div className="h-8 md:h-10 w-px bg-white/10"></div>
+                    <div className="flex items-center gap-2 md:gap-4">
+                      <span className="material-symbols-outlined text-[var(--primary)] text-xl md:text-3xl">grid_view</span>
                       <div>
                         <p className="mono-font text-white/40 text-[10px] uppercase tracking-wider">Tamaño Partido</p>
-                        <p className="display-font font-black text-3xl italic">
+                        <p className="display-font font-black text-xl md:text-3xl italic">
                           {Math.floor(selectedPlayerIds.size / 2)} vs {Math.ceil(selectedPlayerIds.size / 2)}
                         </p>
                       </div>
@@ -770,27 +814,27 @@ ${result.teamB.players.map(p => p.name).join('\n')}
                 </div>
 
                 {/* Stamina Toggle + Info */}
-                <div className="md:col-span-3 glass-card p-6 border border-white/5 flex items-center gap-5">
+                <div className="md:col-span-3 glass-card p-3 md:p-6 border border-white/5 flex items-center gap-3 md:gap-5">
                   {players.some(p => p.stamina != null) ? (
                     <>
-                      <label className="flex items-center gap-3 cursor-pointer select-none">
+                      <label className="flex items-center gap-2 md:gap-3 cursor-pointer select-none">
                         <input
                           type="checkbox"
                           checked={useStaminaInMatch}
                           onChange={(e) => setUseStaminaInMatch(e.target.checked)}
                           className="w-5 h-5 border-2 border-white/20 bg-transparent text-[var(--primary)] focus:ring-0 checked:bg-[var(--primary)] rounded-none"
                         />
-                        <span className="material-symbols-outlined text-rose-500 text-2xl">favorite</span>
-                        <span className="mono-font text-white/60 text-xs uppercase tracking-wider">Considerar cardio en el balance</span>
+                        <span className="material-symbols-outlined text-rose-500 text-xl md:text-2xl">favorite</span>
+                        <span className="mono-font text-white/60 text-[10px] md:text-xs uppercase tracking-wider">Considerar cardio en el balance</span>
                       </label>
                     </>
                   ) : (
                     <>
-                      <span className="material-symbols-outlined text-[var(--primary)] text-3xl">analytics</span>
+                      <span className="hidden md:block material-symbols-outlined text-[var(--primary)] text-3xl">analytics</span>
                       <div>
-                        <span className="mono-font text-[var(--primary)] text-xs font-bold block mb-1">ANALYTICS_SYSTEM:</span>
-                        <p className="text-white/60 text-xs leading-relaxed mono-font uppercase tracking-tight">
-                          El sistema optimizará posiciones automáticamente basándose en las estadísticas individuales.
+                        <span className="mono-font text-[var(--primary)] text-[10px] md:text-xs font-bold block mb-1">ANALYTICS_SYSTEM:</span>
+                        <p className="text-white/60 text-[10px] md:text-xs leading-relaxed mono-font uppercase tracking-tight">
+                          El sistema optimizará posiciones automáticamente.
                         </p>
                       </div>
                     </>
@@ -798,15 +842,15 @@ ${result.teamB.players.map(p => p.name).join('\n')}
                 </div>
 
                 {/* Generate Button */}
-                <div className="md:col-span-6 mt-4">
+                <div className="md:col-span-6 mt-2 md:mt-4">
                   <button
                     onClick={generateMatch}
                     disabled={selectedPlayerIds.size < 2}
-                    className="w-full bg-[var(--primary)] text-black p-10 neon-glow flex items-center justify-center gap-6 transition-all hover:scale-[1.01] active:scale-95 group relative overflow-hidden disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100"
+                    className="w-full bg-[var(--primary)] text-black p-5 md:p-10 neon-glow flex items-center justify-center gap-3 md:gap-6 transition-all hover:scale-[1.01] active:scale-95 group relative overflow-hidden disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:scale-100"
                   >
                     <div className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 italic flex items-center justify-center font-black opacity-10 text-9xl">GO_MATCH</div>
-                    <span className="material-symbols-outlined font-black text-5xl relative z-10">rebase_edit</span>
-                    <span className="display-font text-3xl md:text-5xl font-black uppercase italic tracking-tighter relative z-10">Generar Equipos</span>
+                    <span className="material-symbols-outlined font-black text-3xl md:text-5xl relative z-10">rebase_edit</span>
+                    <span className="display-font text-xl md:text-5xl font-black uppercase italic tracking-tighter relative z-10">Generar Equipos</span>
                     <span className="material-symbols-outlined font-black text-5xl opacity-0 group-hover:opacity-100 transition-all translate-x-[-20px] group-hover:translate-x-0 relative z-10">bolt</span>
                   </button>
                 </div>
@@ -814,93 +858,93 @@ ${result.teamB.players.map(p => p.name).join('\n')}
             ) : (
               <>
                 {/* Match Result View */}
-                <div className="md:col-span-6 flex justify-between items-center flex-wrap gap-4">
+                <div className="md:col-span-6 flex justify-between items-center flex-wrap gap-2 md:gap-4">
                   <button
                     onClick={() => setMatchResult(null)}
-                    className="mono-font text-white/50 text-xs font-bold uppercase tracking-widest hover:text-white flex items-center gap-2 transition-colors"
+                    className="mono-font text-white/50 text-[10px] md:text-xs font-bold uppercase tracking-widest hover:text-white flex items-center gap-1 md:gap-2 transition-colors"
                   >
                     <span className="material-symbols-outlined text-sm">arrow_back</span>
                     Volver
                   </button>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1.5 md:gap-3">
                     <button
                       onClick={() => copyToClipboard()}
-                      className="mono-font text-[var(--primary)] text-xs font-bold uppercase tracking-widest border border-[var(--primary)] px-4 py-2 hover:bg-[var(--primary)] hover:text-black transition-all flex items-center gap-2"
+                      className="mono-font text-[var(--primary)] text-[10px] md:text-xs font-bold uppercase tracking-widest border border-[var(--primary)] px-2 py-1 md:px-4 md:py-2 hover:bg-[var(--primary)] hover:text-black transition-all flex items-center gap-1 md:gap-2"
                     >
                       <span className="material-symbols-outlined text-sm">content_copy</span>
-                      Copiar
+                      <span className="hidden md:inline">Copiar</span>
                     </button>
                     <button
                       onClick={saveMatchToHistory}
-                      className="mono-font text-[var(--primary)] text-xs font-bold uppercase tracking-widest border border-[var(--primary)] px-4 py-2 hover:bg-[var(--primary)] hover:text-black transition-all flex items-center gap-2"
+                      className="mono-font text-[var(--primary)] text-[10px] md:text-xs font-bold uppercase tracking-widest border border-[var(--primary)] px-2 py-1 md:px-4 md:py-2 hover:bg-[var(--primary)] hover:text-black transition-all flex items-center gap-1 md:gap-2"
                     >
                       <span className="material-symbols-outlined text-sm">save</span>
-                      Guardar
+                      <span className="hidden md:inline">Guardar</span>
                     </button>
                     <button
                       onClick={generateMatch}
-                      className="mono-font text-white/50 text-xs font-bold uppercase tracking-widest border border-white/20 px-4 py-2 hover:border-white/50 hover:text-white transition-all flex items-center gap-2"
+                      className="mono-font text-white/50 text-[10px] md:text-xs font-bold uppercase tracking-widest border border-white/20 px-2 py-1 md:px-4 md:py-2 hover:border-white/50 hover:text-white transition-all flex items-center gap-1 md:gap-2"
                     >
                       <span className="material-symbols-outlined text-sm">refresh</span>
-                      Re-calcular
+                      <span className="hidden md:inline">Re-calcular</span>
                     </button>
                   </div>
                 </div>
 
                 {/* Score Display */}
-                <div className="md:col-span-6 glass-card p-10 border-l-8 border-[var(--primary)] relative overflow-hidden">
-                  <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+                <div className="md:col-span-6 glass-card p-4 md:p-10 border-l-4 md:border-l-8 border-[var(--primary)] relative overflow-hidden">
+                  <div className="flex flex-row items-center justify-between gap-3 md:gap-8">
                     <div className="text-center">
-                      <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mb-3 border-4 border-white/20">
-                        <span className="display-font font-black text-2xl">T_A</span>
+                      <div className="w-12 h-12 md:w-20 md:h-20 bg-blue-600 rounded-full flex items-center justify-center mb-1 md:mb-3 border-2 md:border-4 border-white/20">
+                        <span className="display-font font-black text-sm md:text-2xl">T_A</span>
                       </div>
-                      <p className="mono-font text-sm font-bold">{matchResult.teamA.name}</p>
-                      <p className="mono-font text-[10px] text-white/40">AVG: {matchResult.teamA.averageSkill}</p>
+                      <p className="mono-font text-[10px] md:text-sm font-bold">{matchResult.teamA.name}</p>
+                      <p className="mono-font text-[8px] md:text-[10px] text-white/40">AVG: {matchResult.teamA.averageSkill}</p>
                     </div>
                     <div className="flex flex-col items-center">
-                      <div className="display-font text-6xl md:text-8xl font-black italic tracking-tighter">
+                      <div className="display-font text-4xl md:text-8xl font-black italic tracking-tighter">
                         <span>{matchResult.teamA.players.length}</span>
-                        <span className="text-white/20 mx-4">vs</span>
+                        <span className="text-white/20 mx-2 md:mx-4">vs</span>
                         <span className="text-[var(--primary)]">{matchResult.teamB.players.length}</span>
                       </div>
-                      <span className="mono-font text-xs text-white/30 uppercase tracking-[0.3em] mt-2">PLAYERS</span>
+                      <span className="mono-font text-[8px] md:text-xs text-white/30 uppercase tracking-[0.3em] mt-1 md:mt-2">PLAYERS</span>
                     </div>
                     <div className="text-center">
-                      <div className="w-20 h-20 bg-orange-600 rounded-full flex items-center justify-center mb-3 border-4 border-white/10">
-                        <span className="display-font font-black text-2xl">T_B</span>
+                      <div className="w-12 h-12 md:w-20 md:h-20 bg-orange-600 rounded-full flex items-center justify-center mb-1 md:mb-3 border-2 md:border-4 border-white/10">
+                        <span className="display-font font-black text-sm md:text-2xl">T_B</span>
                       </div>
-                      <p className="mono-font text-sm font-bold">{matchResult.teamB.name}</p>
-                      <p className="mono-font text-[10px] text-white/40">AVG: {matchResult.teamB.averageSkill}</p>
+                      <p className="mono-font text-[10px] md:text-sm font-bold">{matchResult.teamB.name}</p>
+                      <p className="mono-font text-[8px] md:text-[10px] text-white/40">AVG: {matchResult.teamB.averageSkill}</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Skill Difference */}
-                <div className="md:col-span-6 glass-card p-6 border-t-4 border-[var(--primary)] text-center">
-                  <p className="mono-font text-[var(--primary)] text-xs font-bold uppercase tracking-widest">
-                    Diferencia de habilidad: {matchResult.skillDifference.toFixed(1)}
-                    {matchResult.skillDifference === 0 ? " // PARTIDO PERFECTO" : " // MUY PAREJO"}
+                <div className="md:col-span-6 glass-card p-3 md:p-6 border-t-2 md:border-t-4 border-[var(--primary)] text-center">
+                  <p className="mono-font text-[var(--primary)] text-[9px] md:text-xs font-bold uppercase tracking-widest">
+                    Diff: {matchResult.skillDifference.toFixed(1)}
+                    {matchResult.skillDifference === 0 ? " // PERFECTO" : " // PAREJO"}
                   </p>
                 </div>
 
                 {/* Team Columns */}
                 <div className="md:col-span-3">
-                  <h4 className="mono-font text-blue-500 text-xs font-bold uppercase tracking-[0.3em] mb-4 flex items-center gap-3">
-                    <span className="h-px w-8 bg-blue-500"></span>
+                  <h4 className="mono-font text-blue-500 text-[9px] md:text-xs font-bold uppercase tracking-[0.3em] mb-2 md:mb-4 flex items-center gap-2 md:gap-3">
+                    <span className="h-px w-6 md:w-8 bg-blue-500"></span>
                     {matchResult.teamA.name}
                   </h4>
-                  <div className="space-y-3">
+                  <div className="space-y-1.5 md:space-y-3">
                     {matchResult.teamA.players.map(p => (
                       <PlayerCard key={p.id} player={p} compact />
                     ))}
                   </div>
                 </div>
                 <div className="md:col-span-3">
-                  <h4 className="mono-font text-orange-500 text-xs font-bold uppercase tracking-[0.3em] mb-4 flex items-center gap-3">
-                    <span className="h-px w-8 bg-orange-500"></span>
+                  <h4 className="mono-font text-orange-500 text-[9px] md:text-xs font-bold uppercase tracking-[0.3em] mb-2 md:mb-4 flex items-center gap-2 md:gap-3">
+                    <span className="h-px w-6 md:w-8 bg-orange-500"></span>
                     {matchResult.teamB.name}
                   </h4>
-                  <div className="space-y-3">
+                  <div className="space-y-1.5 md:space-y-3">
                     {matchResult.teamB.players.map(p => (
                       <PlayerCard key={p.id} player={p} compact />
                     ))}
@@ -913,40 +957,40 @@ ${result.teamB.players.map(p => p.name).join('\n')}
 
         {/* ==================== HISTORY TAB ==================== */}
         {activeTab === 'history' && (
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-6">
             {/* Header */}
-            <div className="md:col-span-12 mb-4">
-              <h2 className="mono-font text-[var(--primary)] text-sm font-bold uppercase tracking-[0.3em] mb-2">DASHBOARD // MATCH_HISTORY</h2>
-              <h1 className="display-font text-5xl md:text-7xl font-black uppercase italic tracking-tighter">Historial</h1>
+            <div className="md:col-span-12 mb-0 md:mb-4">
+              <h2 className="mono-font text-[var(--primary)] text-[9px] md:text-sm font-bold uppercase tracking-[0.3em] mb-0.5 md:mb-2">MATCH_HISTORY</h2>
+              <h1 className="display-font text-3xl md:text-7xl font-black uppercase italic tracking-tighter">Historial</h1>
             </div>
 
             {/* Stats Summary Card */}
             {history.length > 0 && (
-              <div className="md:col-span-12 glass-card p-8 border-t-4 border-[var(--primary)]">
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              <div className="md:col-span-12 glass-card p-3 md:p-8 border-t-2 md:border-t-4 border-[var(--primary)]">
+                <div className="grid grid-cols-4 gap-2 md:gap-6">
                   <div className="text-center">
-                    <p className="display-font text-4xl font-black italic text-[var(--primary)]">{history.length}</p>
-                    <p className="mono-font text-[10px] text-white/40 uppercase tracking-wider mt-1">Partidos Jugados</p>
+                    <p className="display-font text-2xl md:text-4xl font-black italic text-[var(--primary)]">{history.length}</p>
+                    <p className="mono-font text-[7px] md:text-[10px] text-white/40 uppercase tracking-wider mt-0.5 md:mt-1">Jugados</p>
                   </div>
                   <div className="text-center">
-                    <p className="display-font text-4xl font-black italic">
+                    <p className="display-font text-2xl md:text-4xl font-black italic">
                       {history.reduce((sum, h) => sum + h.teamA.players.length + h.teamB.players.length, 0)}
                     </p>
-                    <p className="mono-font text-[10px] text-white/40 uppercase tracking-wider mt-1">Participaciones</p>
+                    <p className="mono-font text-[7px] md:text-[10px] text-white/40 uppercase tracking-wider mt-0.5 md:mt-1">Participaciones</p>
                   </div>
                   <div className="text-center">
-                    <p className="display-font text-4xl font-black italic">
+                    <p className="display-font text-2xl md:text-4xl font-black italic">
                       {history.length > 0
                         ? (history.reduce((sum, h) => sum + h.skillDifference, 0) / history.length).toFixed(1)
                         : '0'}
                     </p>
-                    <p className="mono-font text-[10px] text-white/40 uppercase tracking-wider mt-1">Diff Promedio</p>
+                    <p className="mono-font text-[7px] md:text-[10px] text-white/40 uppercase tracking-wider mt-0.5 md:mt-1">Diff Prom</p>
                   </div>
                   <div className="text-center">
-                    <p className="display-font text-4xl font-black italic text-[var(--primary)]">
+                    <p className="display-font text-2xl md:text-4xl font-black italic text-[var(--primary)]">
                       {history.filter(h => h.skillDifference === 0).length}
                     </p>
-                    <p className="mono-font text-[10px] text-white/40 uppercase tracking-wider mt-1">Partidos Perfectos</p>
+                    <p className="mono-font text-[7px] md:text-[10px] text-white/40 uppercase tracking-wider mt-0.5 md:mt-1">Perfectos</p>
                   </div>
                 </div>
               </div>
@@ -955,46 +999,46 @@ ${result.teamB.players.map(p => p.name).join('\n')}
             {/* Match List */}
             <div className="md:col-span-12">
               {history.length === 0 ? (
-                <div className="glass-card p-12 text-center border border-dashed border-white/10">
-                  <span className="material-symbols-outlined text-white/10 text-6xl mb-4 block">history</span>
-                  <p className="mono-font text-white/30 text-sm uppercase tracking-wider">No hay partidos guardados</p>
+                <div className="glass-card p-8 md:p-12 text-center border border-dashed border-white/10">
+                  <span className="material-symbols-outlined text-white/10 text-4xl md:text-6xl mb-2 md:mb-4 block">history</span>
+                  <p className="mono-font text-white/30 text-[10px] md:text-sm uppercase tracking-wider">No hay partidos guardados</p>
                 </div>
               ) : (
-                <div className="space-y-4 max-h-[600px] overflow-y-auto pr-4 custom-scrollbar">
+                <div className="space-y-2 md:space-y-4 max-h-[500px] md:max-h-[600px] overflow-y-auto pr-1 md:pr-4 custom-scrollbar">
                   {history.map(item => (
                     <div
                       key={item.id}
-                      className="bento-card glass-card p-6 border border-white/5 flex flex-col md:flex-row md:items-center justify-between gap-4 group"
+                      className="bento-card glass-card p-3 md:p-6 border border-white/5 flex items-center md:flex-row justify-between gap-2 md:gap-4 group"
                     >
-                      <div className="flex items-center gap-6">
-                        <div className="text-center w-20">
-                          <p className="mono-font text-[10px] text-white/30 font-bold">{formatDate(item.timestamp).split(',')[0]}</p>
-                          <p className="display-font font-black text-xl italic leading-none">{formatDate(item.timestamp).split(',')[1]?.trim()}</p>
+                      <div className="flex items-center gap-2 md:gap-6 min-w-0 flex-1">
+                        <div className="text-center w-12 md:w-20 flex-shrink-0">
+                          <p className="mono-font text-[8px] md:text-[10px] text-white/30 font-bold">{formatDate(item.timestamp).split(',')[0]}</p>
+                          <p className="display-font font-black text-sm md:text-xl italic leading-none">{formatDate(item.timestamp).split(',')[1]?.trim()}</p>
                         </div>
-                        <div className="h-10 w-px bg-white/10"></div>
-                        <div>
-                          <div className="display-font text-xl font-black italic flex items-center gap-2">
-                            <span className="text-blue-400">{item.teamA.name}</span>
-                            <span className="text-white/20 text-sm">vs</span>
-                            <span className="text-orange-400">{item.teamB.name}</span>
+                        <div className="h-8 md:h-10 w-px bg-white/10 flex-shrink-0"></div>
+                        <div className="min-w-0">
+                          <div className="display-font text-sm md:text-xl font-black italic flex items-center gap-1 md:gap-2">
+                            <span className="text-blue-400 truncate">{item.teamA.name}</span>
+                            <span className="text-white/20 text-[10px] md:text-sm flex-shrink-0">vs</span>
+                            <span className="text-orange-400 truncate">{item.teamB.name}</span>
                           </div>
-                          <p className="mono-font text-[10px] text-white/40 mt-1">
-                            {item.teamA.players.length + item.teamB.players.length} jugadores // diff: {item.skillDifference.toFixed(1)}
+                          <p className="mono-font text-[8px] md:text-[10px] text-white/40 mt-0.5 md:mt-1">
+                            {item.teamA.players.length + item.teamB.players.length}p // diff: {item.skillDifference.toFixed(1)}
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
                         <button
                           onClick={() => copyToClipboard(item)}
-                          className="mono-font text-white/30 text-[10px] font-bold uppercase tracking-widest border border-white/10 px-4 py-2 hover:border-[var(--primary)] hover:text-[var(--primary)] transition-all flex items-center gap-2"
+                          className="text-white/30 p-1.5 md:p-0 md:mono-font md:text-[10px] md:font-bold md:uppercase md:tracking-widest md:border md:border-white/10 md:px-4 md:py-2 hover:text-[var(--primary)] md:hover:border-[var(--primary)] transition-all flex items-center gap-2"
                           title="Copiar equipos"
                         >
                           <span className="material-symbols-outlined text-sm">content_copy</span>
-                          Copiar
+                          <span className="hidden md:inline">Copiar</span>
                         </button>
                         <button
                           onClick={() => handleDeleteHistory(item.id)}
-                          className="mono-font text-white/30 text-[10px] font-bold uppercase tracking-widest border border-white/10 px-4 py-2 hover:border-red-500 hover:text-red-500 transition-all flex items-center gap-2"
+                          className="text-white/30 p-1.5 md:p-0 md:mono-font md:text-[10px] md:font-bold md:uppercase md:tracking-widest md:border md:border-white/10 md:px-4 md:py-2 hover:text-red-500 md:hover:border-red-500 transition-all flex items-center gap-2"
                           title="Eliminar"
                         >
                           <span className="material-symbols-outlined text-sm">delete</span>
@@ -1008,6 +1052,36 @@ ${result.teamB.players.map(p => p.name).join('\n')}
           </div>
         )}
       </main>
+
+      {/* Mobile Fixed Bottom Button - Roster Tab Only */}
+      {activeTab === 'roster' && (
+        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-black/95 backdrop-blur-xl border-t border-white/10 p-4 z-[110]">
+          <div className="max-w-md mx-auto flex gap-2">
+            <button
+              type="button"
+              onClick={handleSavePlayer}
+              disabled={!newName.trim()}
+              className="flex-1 bg-[var(--primary)] py-4 flex items-center justify-center gap-3 active:scale-[0.98] transition-all neon-glow disabled:opacity-30 disabled:cursor-not-allowed"
+            >
+              <span className="material-symbols-outlined text-black font-black text-xl">
+                {editingPlayerId ? 'save' : 'add_circle'}
+              </span>
+              <span className="display-font font-black italic text-lg text-black tracking-tight uppercase" style={{ transform: 'skew(-10deg)' }}>
+                {editingPlayerId ? 'Actualizar' : 'Agregar Jugador'}
+              </span>
+            </button>
+            {editingPlayerId && (
+              <button
+                type="button"
+                onClick={cancelEditing}
+                className="w-14 bg-white/5 border border-white/10 flex items-center justify-center active:scale-[0.98]"
+              >
+                <span className="material-symbols-outlined text-white/60">close</span>
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <footer className="max-w-7xl mx-auto px-6 py-16 text-center">
