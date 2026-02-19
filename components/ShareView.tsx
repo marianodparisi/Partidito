@@ -19,6 +19,16 @@ export const ShareView: React.FC<ShareViewProps> = ({ shareId }) => {
     });
   }, [shareId]);
 
+  const formatSchedule = (timestamp: number) => {
+    return new Date(timestamp).toLocaleString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4">
@@ -97,6 +107,27 @@ export const ShareView: React.FC<ShareViewProps> = ({ shareId }) => {
             </div>
           </div>
         </div>
+
+        {(match.location || match.scheduledAt || (match.scoreA != null && match.scoreB != null)) && (
+          <div className="glass-card p-3 md:p-4 border border-white/10">
+            <h3 className="mono-font text-[var(--primary)] text-[9px] md:text-xs font-bold uppercase tracking-widest mb-2">
+              Datos del partido
+            </h3>
+            {match.location && (
+              <p className="mono-font text-white/70 text-[10px] md:text-xs uppercase tracking-wide">Cancha: {match.location}</p>
+            )}
+            {match.scheduledAt && (
+              <p className="mono-font text-white/70 text-[10px] md:text-xs uppercase tracking-wide">
+                Horario: {formatSchedule(match.scheduledAt)}
+              </p>
+            )}
+            {match.scoreA != null && match.scoreB != null && (
+              <p className="mono-font text-[var(--primary)] text-[10px] md:text-xs font-bold uppercase tracking-wide">
+                Resultado: {match.scoreA}-{match.scoreB}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Skill diff */}
         <div className="glass-card p-3 md:p-4 border-t-2 border-[var(--primary)] text-center">

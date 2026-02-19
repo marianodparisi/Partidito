@@ -1,6 +1,40 @@
 import { supabase } from './supabase';
 import { Player, SavedMatch } from '../types';
 
+type MatchMetaBlob = {
+  location?: string;
+  scheduledAt?: number;
+  scoreA?: number;
+  scoreB?: number;
+};
+
+const withMatchMeta = (teamA: SavedMatch['teamA'], match: SavedMatch) => ({
+  ...teamA,
+  __matchMeta: {
+    location: match.location,
+    scheduledAt: match.scheduledAt,
+    scoreA: match.scoreA,
+    scoreB: match.scoreB,
+  } satisfies MatchMetaBlob
+});
+
+const stripMatchMeta = (teamA: any) => {
+  if (!teamA || typeof teamA !== 'object') return teamA;
+  const { __matchMeta: _meta, ...cleanTeamA } = teamA;
+  return cleanTeamA;
+};
+
+const readMatchMeta = (teamA: any): MatchMetaBlob => {
+  const meta = teamA?.__matchMeta;
+  if (!meta || typeof meta !== 'object') return {};
+  return {
+    location: typeof meta.location === 'string' ? meta.location : undefined,
+    scheduledAt: typeof meta.scheduledAt === 'number' ? meta.scheduledAt : undefined,
+    scoreA: typeof meta.scoreA === 'number' ? meta.scoreA : undefined,
+    scoreB: typeof meta.scoreB === 'number' ? meta.scoreB : undefined,
+  };
+};
+
 // ============ PLAYERS ============
 
 export const dbGetPlayers = async (): Promise<Player[]> => {
@@ -107,9 +141,10 @@ export const dbGetHistory = async (): Promise<SavedMatch[]> => {
   }
 
   return (data || []).map(m => ({
+    ...readMatchMeta(m.team_a),
     id: m.id,
     timestamp: m.timestamp,
-    teamA: m.team_a,
+    teamA: stripMatchMeta(m.team_a),
     teamB: m.team_b,
     skillDifference: m.skill_difference
   }));
@@ -125,7 +160,7 @@ export const dbSaveMatch = async (match: SavedMatch): Promise<void> => {
       id: match.id,
       user_id: user.id,
       timestamp: match.timestamp,
-      team_a: match.teamA,
+      team_a: withMatchMeta(match.teamA, match),
       team_b: match.teamB,
       skill_difference: match.skillDifference
     });
@@ -149,6 +184,51 @@ export const dbDeleteMatch = async (id: string): Promise<void> => {
   if (error) {
     console.error('Error deleting match:', error);
     throw error;
+  }
+};
+
+export const dbUpdateMatch = async (match: SavedMatch): Promise<void> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('User not authenticated');
+
+  const payload = {
+    timestamp: match.timestamp,
+    team_a: withMatchMeta(match.teamA, match),
+    team_b: match.teamB,
+    skill_difference: match.skillDifference
+  };
+
+  const { error } = await supabase
+    .from('matches')
+    .update(payload)
+    .eq('id', match.id)
+    .eq('user_id', user.id);
+
+  if (!error) return;
+
+  // Fallback for projects missing UPDATE policy: replace row with same id.
+  const { error: deleteError } = await supabase
+    .from('matches')
+    .delete()
+    .eq('id', match.id)
+    .eq('user_id', user.id);
+
+  if (deleteError) {
+    console.error('Error updating match (delete fallback):', deleteError);
+    throw deleteError;
+  }
+
+  const { error: insertError } = await supabase
+    .from('matches')
+    .insert({
+      id: match.id,
+      user_id: user.id,
+      ...payload
+    });
+
+  if (insertError) {
+    console.error('Error updating match (insert fallback):', insertError);
+    throw insertError;
   }
 };
 

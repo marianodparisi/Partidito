@@ -27,6 +27,10 @@ export interface MatchResult {
   teamA: Team;
   teamB: Team;
   skillDifference: number;
+  location?: string;
+  scheduledAt?: number;
+  scoreA?: number;
+  scoreB?: number;
 }
 
 export interface SavedMatch extends MatchResult {

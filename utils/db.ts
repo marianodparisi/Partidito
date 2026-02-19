@@ -147,3 +147,21 @@ export const dbDeleteMatch = async (id: string): Promise<void> => {
     };
   });
 };
+
+export const dbUpdateMatch = async (match: SavedMatch): Promise<void> => {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(STORE_HISTORY, 'readwrite');
+    const store = transaction.objectStore(STORE_HISTORY);
+    const request = store.put(match);
+
+    transaction.oncomplete = () => db.close();
+    transaction.onerror = () => db.close();
+
+    request.onsuccess = () => resolve();
+    request.onerror = () => {
+      db.close();
+      reject(request.error);
+    };
+  });
+};

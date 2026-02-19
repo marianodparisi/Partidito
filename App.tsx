@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Player, Position, MatchResult, PositionSkillMap, SavedMatch } from './types';
 import { generateBalancedTeams } from './utils/balancer';
-import { dbAddPlayer, dbDeletePlayer, dbGetPlayers, dbSaveMatch, dbGetHistory, dbDeleteMatch, dbUpdatePlayer, dbShareMatch } from './utils/db-supabase';
+import { dbAddPlayer, dbDeletePlayer, dbGetPlayers, dbSaveMatch, dbGetHistory, dbDeleteMatch, dbUpdatePlayer, dbShareMatch, dbUpdateMatch } from './utils/db-supabase';
 import { onAuthStateChange, signOut } from './utils/auth';
 import { PlayerCard } from './components/PlayerCard';
 import { Modal, ModalConfig } from './components/Modal';
@@ -21,6 +21,13 @@ function App() {
 
   const [selectedPlayerIds, setSelectedPlayerIds] = useState<Set<string>>(new Set());
   const [matchResult, setMatchResult] = useState<MatchResult | null>(null);
+  const [teamAName, setTeamAName] = useState('Equipo 1');
+  const [teamBName, setTeamBName] = useState('Equipo 2');
+  const [matchLocation, setMatchLocation] = useState('');
+  const [matchScheduledAt, setMatchScheduledAt] = useState('');
+  const [editingScoreId, setEditingScoreId] = useState<string | null>(null);
+  const [scoreDraftA, setScoreDraftA] = useState('');
+  const [scoreDraftB, setScoreDraftB] = useState('');
 
   // Form State
   const [newName, setNewName] = useState('');
@@ -147,6 +154,38 @@ function App() {
     return new Date(timestamp).toLocaleDateString('es-ES', {
       day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
     });
+  };
+
+  const formatSchedule = (timestamp: number) => {
+    return new Date(timestamp).toLocaleString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
+  const buildCurrentMatchData = (): MatchResult | null => {
+    if (!matchResult) return null;
+
+    const safeTeamAName = teamAName.trim() || 'Equipo 1';
+    const safeTeamBName = teamBName.trim() || 'Equipo 2';
+    const scheduledAt = matchScheduledAt ? new Date(matchScheduledAt).getTime() : undefined;
+
+    return {
+      ...matchResult,
+      teamA: {
+        ...matchResult.teamA,
+        name: safeTeamAName
+      },
+      teamB: {
+        ...matchResult.teamB,
+        name: safeTeamBName
+      },
+      location: matchLocation.trim() || undefined,
+      scheduledAt: Number.isFinite(scheduledAt) ? scheduledAt : undefined
+    };
   };
 
   // --- Modal Helpers ---
@@ -328,16 +367,21 @@ function App() {
     }
     const result = generateBalancedTeams(availablePlayers, useStaminaInMatch);
     setMatchResult(result);
+    setTeamAName(result.teamA.name);
+    setTeamBName(result.teamB.name);
+    setMatchLocation('');
+    setMatchScheduledAt('');
   };
 
   const saveMatchToHistory = async () => {
-    if (!matchResult) return;
+    const currentMatch = buildCurrentMatchData();
+    if (!currentMatch) return;
     if (!user) {
       showAlert("Iniciá sesión", "Para guardar partidos en el historial necesitás iniciar sesión.");
       return;
     }
     const toSave: SavedMatch = {
-      ...matchResult,
+      ...currentMatch,
       id: crypto.randomUUID(),
       timestamp: Date.now()
     };
@@ -359,9 +403,10 @@ function App() {
   };
 
   const handleShareMatch = async () => {
-    if (!matchResult || !user) return;
+    const currentMatch = buildCurrentMatchData();
+    if (!currentMatch || !user) return;
     try {
-      const id = await dbShareMatch(matchResult);
+      const id = await dbShareMatch(currentMatch);
       const url = `${window.location.origin}${window.location.pathname}?share=${id}`;
       await navigator.clipboard.writeText(url);
       showSuccess('Link copiado', '¡El link del partido se copió al portapapeles! Compartilo con tus amigos.');
@@ -373,7 +418,16 @@ function App() {
   const copyToClipboard = (result: MatchResult = matchResult!) => {
     if (!result) return;
 
+    const locationLine = result.location ? `\nCancha: ${result.location}` : '';
+    const scheduleLine = result.scheduledAt ? `\nHorario: ${formatSchedule(result.scheduledAt)}` : '';
+    const scoreLine = (result.scoreA != null && result.scoreB != null) ? `\nResultado: ${result.scoreA}-${result.scoreB}` : '';
+
     const text = `
+Partido
+${locationLine ? locationLine.trim() : ''}
+${scheduleLine ? scheduleLine.trim() : ''}
+${scoreLine ? scoreLine.trim() : ''}
+
 ${result.teamA.name}:
 ${result.teamA.players.map(p => p.name).join('\n')}
 
@@ -384,6 +438,49 @@ ${result.teamB.players.map(p => p.name).join('\n')}
     navigator.clipboard.writeText(text).then(() => {
       showSuccess('Copiado', '¡Los equipos se han copiado al portapapeles!');
     });
+  };
+
+  const startScoreEdit = (match: SavedMatch) => {
+    setEditingScoreId(match.id);
+    setScoreDraftA(match.scoreA != null ? String(match.scoreA) : '');
+    setScoreDraftB(match.scoreB != null ? String(match.scoreB) : '');
+  };
+
+  const cancelScoreEdit = () => {
+    setEditingScoreId(null);
+    setScoreDraftA('');
+    setScoreDraftB('');
+  };
+
+  const saveHistoryScore = async (match: SavedMatch) => {
+    const nextScoreA = parseInt(scoreDraftA, 10);
+    const nextScoreB = parseInt(scoreDraftB, 10);
+
+    if (Number.isNaN(nextScoreA) || Number.isNaN(nextScoreB) || nextScoreA < 0 || nextScoreB < 0) {
+      showAlert('Resultado inválido', 'Ingresá un resultado válido. Ejemplo: 3 y 2.');
+      return;
+    }
+
+    const updatedMatch: SavedMatch = {
+      ...match,
+      scoreA: nextScoreA,
+      scoreB: nextScoreB
+    };
+
+    setHistory(prev => prev.map(h => h.id === match.id ? updatedMatch : h));
+    cancelScoreEdit();
+
+    try {
+      if (user) await dbUpdateMatch(updatedMatch);
+      showSuccess('Resultado guardado', `Se actualizó el marcador a ${nextScoreA}-${nextScoreB}.`);
+    } catch (error) {
+      console.error('Error updating match score:', error);
+      showAlert('Error', 'No se pudo actualizar el resultado del partido.');
+      if (user) {
+        const loadedHistory = await dbGetHistory();
+        setHistory(loadedHistory);
+      }
+    }
   };
 
   const currentAverage = calculateAverageSkill(positionSkills);
@@ -889,7 +986,7 @@ ${result.teamB.players.map(p => p.name).join('\n')}
                   </button>
                   <div className="flex items-center gap-1.5 md:gap-3">
                     <button
-                      onClick={() => copyToClipboard()}
+                      onClick={() => copyToClipboard(buildCurrentMatchData() || matchResult)}
                       className="mono-font text-[var(--primary)] text-[10px] md:text-xs font-bold uppercase tracking-widest border border-[var(--primary)] px-2 py-1 md:px-4 md:py-2 hover:bg-[var(--primary)] hover:text-black transition-all flex items-center gap-1 md:gap-2"
                     >
                       <span className="material-symbols-outlined text-sm">content_copy</span>
@@ -922,13 +1019,61 @@ ${result.teamB.players.map(p => p.name).join('\n')}
                 </div>
 
                 {/* Score Display */}
+                <div className="md:col-span-6 glass-card p-4 md:p-6 border border-white/10">
+                  <h4 className="mono-font text-[var(--primary)] text-[9px] md:text-xs font-bold uppercase tracking-[0.3em] mb-3">
+                    DATOS_DEL_PARTIDO
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <label className="block">
+                      <span className="mono-font text-[9px] md:text-[10px] text-white/50 uppercase tracking-widest">Nombre Equipo A</span>
+                      <input
+                        type="text"
+                        value={teamAName}
+                        onChange={(e) => setTeamAName(e.target.value)}
+                        placeholder="Equipo A"
+                        className="mt-1 w-full bg-white/5 border border-white/10 px-3 py-2 text-sm md:text-base focus:outline-none focus:border-[var(--primary)]"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="mono-font text-[9px] md:text-[10px] text-white/50 uppercase tracking-widest">Nombre Equipo B</span>
+                      <input
+                        type="text"
+                        value={teamBName}
+                        onChange={(e) => setTeamBName(e.target.value)}
+                        placeholder="Equipo B"
+                        className="mt-1 w-full bg-white/5 border border-white/10 px-3 py-2 text-sm md:text-base focus:outline-none focus:border-[var(--primary)]"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="mono-font text-[9px] md:text-[10px] text-white/50 uppercase tracking-widest">Ubicación</span>
+                      <input
+                        type="text"
+                        value={matchLocation}
+                        onChange={(e) => setMatchLocation(e.target.value)}
+                        placeholder="Cancha / lugar"
+                        className="mt-1 w-full bg-white/5 border border-white/10 px-3 py-2 text-sm md:text-base focus:outline-none focus:border-[var(--primary)]"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="mono-font text-[9px] md:text-[10px] text-white/50 uppercase tracking-widest">Horario</span>
+                      <input
+                        type="datetime-local"
+                        value={matchScheduledAt}
+                        onChange={(e) => setMatchScheduledAt(e.target.value)}
+                        className="mt-1 w-full bg-white/5 border border-white/10 px-3 py-2 text-sm md:text-base focus:outline-none focus:border-[var(--primary)]"
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Score Display */}
                 <div className="md:col-span-6 glass-card p-4 md:p-10 border-l-4 md:border-l-8 border-[var(--primary)] relative overflow-hidden">
                   <div className="flex flex-row items-center justify-between gap-3 md:gap-8">
                     <div className="text-center">
                       <div className="w-12 h-12 md:w-20 md:h-20 bg-blue-600 rounded-full flex items-center justify-center mb-1 md:mb-3 border-2 md:border-4 border-white/20">
                         <span className="display-font font-black text-sm md:text-2xl">T_A</span>
                       </div>
-                      <p className="mono-font text-[10px] md:text-sm font-bold">{matchResult.teamA.name}</p>
+                      <p className="mono-font text-[10px] md:text-sm font-bold">{teamAName.trim() || 'Equipo 1'}</p>
                       <p className="mono-font text-[8px] md:text-[10px] text-white/40">AVG: {matchResult.teamA.averageSkill}</p>
                     </div>
                     <div className="flex flex-col items-center">
@@ -943,7 +1088,7 @@ ${result.teamB.players.map(p => p.name).join('\n')}
                       <div className="w-12 h-12 md:w-20 md:h-20 bg-orange-600 rounded-full flex items-center justify-center mb-1 md:mb-3 border-2 md:border-4 border-white/10">
                         <span className="display-font font-black text-sm md:text-2xl">T_B</span>
                       </div>
-                      <p className="mono-font text-[10px] md:text-sm font-bold">{matchResult.teamB.name}</p>
+                      <p className="mono-font text-[10px] md:text-sm font-bold">{teamBName.trim() || 'Equipo 2'}</p>
                       <p className="mono-font text-[8px] md:text-[10px] text-white/40">AVG: {matchResult.teamB.averageSkill}</p>
                     </div>
                   </div>
@@ -955,13 +1100,20 @@ ${result.teamB.players.map(p => p.name).join('\n')}
                     Diff: {matchResult.skillDifference.toFixed(1)}
                     {matchResult.skillDifference === 0 ? " // PERFECTO" : " // PAREJO"}
                   </p>
+                  {(matchLocation.trim() || matchScheduledAt) && (
+                    <p className="mono-font text-white/50 text-[9px] md:text-xs uppercase tracking-wide mt-2">
+                      {matchLocation.trim() ? `Cancha: ${matchLocation.trim()}` : ''}
+                      {matchLocation.trim() && matchScheduledAt ? ' // ' : ''}
+                      {matchScheduledAt ? `Horario: ${formatSchedule(new Date(matchScheduledAt).getTime())}` : ''}
+                    </p>
+                  )}
                 </div>
 
                 {/* Team Columns */}
                 <div className="md:col-span-3">
                   <h4 className="mono-font text-blue-500 text-[9px] md:text-xs font-bold uppercase tracking-[0.3em] mb-2 md:mb-4 flex items-center gap-2 md:gap-3">
                     <span className="h-px w-6 md:w-8 bg-blue-500"></span>
-                    {matchResult.teamA.name}
+                    {teamAName.trim() || 'Equipo 1'}
                   </h4>
                   <div className="space-y-1.5 md:space-y-3">
                     {matchResult.teamA.players.map(p => (
@@ -972,7 +1124,7 @@ ${result.teamB.players.map(p => p.name).join('\n')}
                 <div className="md:col-span-3">
                   <h4 className="mono-font text-orange-500 text-[9px] md:text-xs font-bold uppercase tracking-[0.3em] mb-2 md:mb-4 flex items-center gap-2 md:gap-3">
                     <span className="h-px w-6 md:w-8 bg-orange-500"></span>
-                    {matchResult.teamB.name}
+                    {teamBName.trim() || 'Equipo 2'}
                   </h4>
                   <div className="space-y-1.5 md:space-y-3">
                     {matchResult.teamB.players.map(p => (
@@ -1055,9 +1207,61 @@ ${result.teamB.players.map(p => p.name).join('\n')}
                           <p className="mono-font text-[8px] md:text-[10px] text-white/40 mt-0.5 md:mt-1">
                             {item.teamA.players.length + item.teamB.players.length}p // diff: {item.skillDifference.toFixed(1)}
                           </p>
+                          {(item.location || item.scheduledAt) && (
+                            <p className="mono-font text-[8px] md:text-[10px] text-white/40 mt-0.5">
+                              {item.location ? `Cancha: ${item.location}` : ''}
+                              {item.location && item.scheduledAt ? ' // ' : ''}
+                              {item.scheduledAt ? `Horario: ${formatSchedule(item.scheduledAt)}` : ''}
+                            </p>
+                          )}
+                          <p className="mono-font text-[8px] md:text-[10px] text-[var(--primary)] mt-0.5">
+                            Resultado: {item.scoreA != null && item.scoreB != null ? `${item.scoreA}-${item.scoreB}` : 'sin cargar'}
+                          </p>
                         </div>
                       </div>
                       <div className="flex items-center gap-1 md:gap-2 flex-shrink-0">
+                        {editingScoreId === item.id ? (
+                          <>
+                            <input
+                              type="number"
+                              min={0}
+                              value={scoreDraftA}
+                              onChange={(e) => setScoreDraftA(e.target.value)}
+                              className="w-14 bg-white/5 border border-white/10 px-2 py-1 text-xs focus:outline-none focus:border-[var(--primary)]"
+                            />
+                            <span className="mono-font text-white/50 text-xs">-</span>
+                            <input
+                              type="number"
+                              min={0}
+                              value={scoreDraftB}
+                              onChange={(e) => setScoreDraftB(e.target.value)}
+                              className="w-14 bg-white/5 border border-white/10 px-2 py-1 text-xs focus:outline-none focus:border-[var(--primary)]"
+                            />
+                            <button
+                              onClick={() => saveHistoryScore(item)}
+                              className="text-white/30 p-1.5 md:p-0 md:mono-font md:text-[10px] md:font-bold md:uppercase md:tracking-widest md:border md:border-white/10 md:px-4 md:py-2 hover:text-[var(--primary)] md:hover:border-[var(--primary)] transition-all flex items-center gap-2"
+                              title="Guardar resultado"
+                            >
+                              <span className="material-symbols-outlined text-sm">save</span>
+                            </button>
+                            <button
+                              onClick={cancelScoreEdit}
+                              className="text-white/30 p-1.5 md:p-0 md:mono-font md:text-[10px] md:font-bold md:uppercase md:tracking-widest md:border md:border-white/10 md:px-4 md:py-2 hover:text-white md:hover:border-white/40 transition-all flex items-center gap-2"
+                              title="Cancelar"
+                            >
+                              <span className="material-symbols-outlined text-sm">close</span>
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => startScoreEdit(item)}
+                            className="text-white/30 p-1.5 md:p-0 md:mono-font md:text-[10px] md:font-bold md:uppercase md:tracking-widest md:border md:border-white/10 md:px-4 md:py-2 hover:text-[var(--primary)] md:hover:border-[var(--primary)] transition-all flex items-center gap-2"
+                            title="Editar resultado"
+                          >
+                            <span className="material-symbols-outlined text-sm">sports_score</span>
+                            <span className="hidden md:inline">Resultado</span>
+                          </button>
+                        )}
                         <button
                           onClick={() => copyToClipboard(item)}
                           className="text-white/30 p-1.5 md:p-0 md:mono-font md:text-[10px] md:font-bold md:uppercase md:tracking-widest md:border md:border-white/10 md:px-4 md:py-2 hover:text-[var(--primary)] md:hover:border-[var(--primary)] transition-all flex items-center gap-2"

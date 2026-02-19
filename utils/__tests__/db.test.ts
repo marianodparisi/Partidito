@@ -5,6 +5,7 @@ import {
   dbGetHistory,
   dbGetPlayers,
   dbSaveMatch,
+  dbUpdateMatch,
   dbUpdatePlayer
 } from '../db';
 import { Player, Position, SavedMatch } from '../../types';
@@ -125,5 +126,17 @@ describe('IndexedDB helpers', () => {
 
     const history = await dbGetHistory();
     expect(history).toHaveLength(0);
+  });
+
+  it('updates match score in history', async () => {
+    const players = [createPlayer({ name: 'A' }), createPlayer({ name: 'B' })];
+    const match = createMatch(players, { scoreA: 1, scoreB: 1 });
+
+    await dbSaveMatch(match);
+    await dbUpdateMatch({ ...match, scoreA: 3, scoreB: 2 });
+
+    const [stored] = await dbGetHistory();
+    expect(stored?.scoreA).toBe(3);
+    expect(stored?.scoreB).toBe(2);
   });
 });
