@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Player, Position, MatchResult, PositionSkillMap, SavedMatch } from './types';
 import { generateBalancedTeams } from './utils/balancer';
-import { dbAddPlayer, dbDeletePlayer, dbGetPlayers, dbSaveMatch, dbGetHistory, dbDeleteMatch, dbUpdatePlayer } from './utils/db-supabase';
+import { dbAddPlayer, dbDeletePlayer, dbGetPlayers, dbSaveMatch, dbGetHistory, dbDeleteMatch, dbUpdatePlayer, dbShareMatch } from './utils/db-supabase';
 import { onAuthStateChange, signOut } from './utils/auth';
 import { PlayerCard } from './components/PlayerCard';
 import { Modal, ModalConfig } from './components/Modal';
 import { AuthModal } from './components/AuthModal';
+import { ShareView } from './components/ShareView';
 
 function App() {
   // --- Auth State ---
@@ -36,6 +37,9 @@ function App() {
   const initialLoadDone = useRef(false);
   const [activeTab, setActiveTab] = useState<'roster' | 'match' | 'history'>('roster');
   const [useStaminaInMatch, setUseStaminaInMatch] = useState(false);
+
+  // Share URL detection
+  const shareId = new URLSearchParams(window.location.search).get('share');
 
   // Modal State
   const [modal, setModal] = useState<ModalConfig>({
@@ -354,6 +358,18 @@ function App() {
       );
   };
 
+  const handleShareMatch = async () => {
+    if (!matchResult || !user) return;
+    try {
+      const id = await dbShareMatch(matchResult);
+      const url = `${window.location.origin}${window.location.pathname}?share=${id}`;
+      await navigator.clipboard.writeText(url);
+      showSuccess('Link copiado', '¡El link del partido se copió al portapapeles! Compartilo con tus amigos.');
+    } catch (e) {
+      showAlert('Error', 'No se pudo generar el link para compartir.');
+    }
+  };
+
   const copyToClipboard = (result: MatchResult = matchResult!) => {
     if (!result) return;
 
@@ -385,6 +401,11 @@ ${result.teamB.players.map(p => p.name).join('\n')}
     purple: 'border-purple-500 text-purple-500',
     red: 'border-red-500 text-red-500',
   };
+
+  // If accessed via share link, show public view immediately
+  if (shareId) {
+    return <ShareView shareId={shareId} />;
+  }
 
   if (!initialLoadDone.current && (authLoading || isLoading)) {
     return (
@@ -881,6 +902,15 @@ ${result.teamB.players.map(p => p.name).join('\n')}
                       <span className="material-symbols-outlined text-sm">save</span>
                       <span className="hidden md:inline">Guardar</span>
                     </button>
+                    {user && (
+                      <button
+                        onClick={handleShareMatch}
+                        className="mono-font text-[var(--primary)] text-[10px] md:text-xs font-bold uppercase tracking-widest border border-[var(--primary)] px-2 py-1 md:px-4 md:py-2 hover:bg-[var(--primary)] hover:text-black transition-all flex items-center gap-1 md:gap-2"
+                      >
+                        <span className="material-symbols-outlined text-sm">share</span>
+                        <span className="hidden md:inline">Compartir</span>
+                      </button>
+                    )}
                     <button
                       onClick={generateMatch}
                       className="mono-font text-white/50 text-[10px] md:text-xs font-bold uppercase tracking-widest border border-white/20 px-2 py-1 md:px-4 md:py-2 hover:border-white/50 hover:text-white transition-all flex items-center gap-1 md:gap-2"

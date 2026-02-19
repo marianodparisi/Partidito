@@ -151,3 +151,37 @@ export const dbDeleteMatch = async (id: string): Promise<void> => {
     throw error;
   }
 };
+
+// ============ SHARED MATCHES ============
+
+export const dbShareMatch = async (match: import('../types').MatchResult): Promise<string> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('User not authenticated');
+
+  const id = crypto.randomUUID();
+  const { error } = await supabase
+    .from('shared_matches')
+    .insert({
+      id,
+      user_id: user.id,
+      data: match,
+    });
+
+  if (error) {
+    console.error('Error sharing match:', error);
+    throw error;
+  }
+
+  return id;
+};
+
+export const dbGetSharedMatch = async (id: string): Promise<import('../types').MatchResult | null> => {
+  const { data, error } = await supabase
+    .from('shared_matches')
+    .select('data')
+    .eq('id', id)
+    .single();
+
+  if (error || !data) return null;
+  return data.data as import('../types').MatchResult;
+};
