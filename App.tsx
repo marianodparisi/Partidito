@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Player, Position, MatchResult, PositionSkillMap, SavedMatch } from './types';
-import { generateBalancedTeams } from './utils/balancer';
+import { calculateTeamStats, generateBalancedTeams } from './utils/balancer';
 import { dbAddPlayer, dbDeletePlayer, dbGetPlayers, dbSaveMatch, dbGetHistory, dbDeleteMatch, dbUpdatePlayer, dbShareMatch, dbUpdateMatch } from './utils/db-supabase';
 import { onAuthStateChange, signOut } from './utils/auth';
 import { PlayerCard } from './components/PlayerCard';
@@ -25,6 +25,9 @@ function App() {
   const [teamBName, setTeamBName] = useState('Equipo 2');
   const [matchLocation, setMatchLocation] = useState('');
   const [matchScheduledAt, setMatchScheduledAt] = useState('');
+  const [dragPlayerId, setDragPlayerId] = useState<string | null>(null);
+  const [dragFromTeam, setDragFromTeam] = useState<'A' | 'B' | null>(null);
+  const [dragOverTeam, setDragOverTeam] = useState<'A' | 'B' | null>(null);
   const [editingScoreId, setEditingScoreId] = useState<string | null>(null);
   const [scoreDraftA, setScoreDraftA] = useState('');
   const [scoreDraftB, setScoreDraftB] = useState('');
@@ -481,6 +484,51 @@ ${result.teamB.players.map(p => p.name).join('\n')}
         setHistory(loadedHistory);
       }
     }
+  };
+
+  const handleDragStart = (playerId: string, fromTeam: 'A' | 'B') => {
+    setDragPlayerId(playerId);
+    setDragFromTeam(fromTeam);
+  };
+
+  const handleDragEnd = () => {
+    setDragPlayerId(null);
+    setDragFromTeam(null);
+    setDragOverTeam(null);
+  };
+
+  const handleDropToTeam = (toTeam: 'A' | 'B') => {
+    if (!matchResult || !dragPlayerId || !dragFromTeam || dragFromTeam === toTeam) {
+      handleDragEnd();
+      return;
+    }
+
+    const sourcePlayers = dragFromTeam === 'A' ? matchResult.teamA.players : matchResult.teamB.players;
+    const movingPlayer = sourcePlayers.find(p => p.id === dragPlayerId);
+    if (!movingPlayer) {
+      handleDragEnd();
+      return;
+    }
+
+    const nextTeamAPlayers = dragFromTeam === 'A'
+      ? matchResult.teamA.players.filter(p => p.id !== dragPlayerId)
+      : [...matchResult.teamA.players, movingPlayer];
+
+    const nextTeamBPlayers = dragFromTeam === 'B'
+      ? matchResult.teamB.players.filter(p => p.id !== dragPlayerId)
+      : [...matchResult.teamB.players, movingPlayer];
+
+    const nextTeamA = calculateTeamStats(nextTeamAPlayers, matchResult.teamA.name);
+    const nextTeamB = calculateTeamStats(nextTeamBPlayers, matchResult.teamB.name);
+
+    setMatchResult({
+      ...matchResult,
+      teamA: nextTeamA,
+      teamB: nextTeamB,
+      skillDifference: parseFloat(Math.abs(nextTeamA.totalSkill - nextTeamB.totalSkill).toFixed(2))
+    });
+
+    handleDragEnd();
   };
 
   const currentAverage = calculateAverageSkill(positionSkills);
@@ -1110,25 +1158,69 @@ ${result.teamB.players.map(p => p.name).join('\n')}
                 </div>
 
                 {/* Team Columns */}
-                <div className="md:col-span-3">
+                <div
+                  className={`md:col-span-3 transition-colors ${dragOverTeam === 'A' ? 'bg-blue-500/5' : ''}`}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setDragOverTeam('A');
+                  }}
+                  onDragLeave={() => setDragOverTeam(null)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    handleDropToTeam('A');
+                  }}
+                >
                   <h4 className="mono-font text-blue-500 text-[9px] md:text-xs font-bold uppercase tracking-[0.3em] mb-2 md:mb-4 flex items-center gap-2 md:gap-3">
                     <span className="h-px w-6 md:w-8 bg-blue-500"></span>
                     {teamAName.trim() || 'Equipo 1'}
                   </h4>
+                  <p className="mono-font text-white/30 text-[8px] md:text-[10px] uppercase tracking-wider mb-2">
+                    Arrastrá jugadores acá para moverlos
+                  </p>
                   <div className="space-y-1.5 md:space-y-3">
                     {matchResult.teamA.players.map(p => (
-                      <PlayerCard key={p.id} player={p} compact />
+                      <div
+                        key={p.id}
+                        draggable
+                        onDragStart={() => handleDragStart(p.id, 'A')}
+                        onDragEnd={handleDragEnd}
+                        className={`cursor-move ${dragPlayerId === p.id ? 'opacity-50' : ''}`}
+                      >
+                        <PlayerCard player={p} compact />
+                      </div>
                     ))}
                   </div>
                 </div>
-                <div className="md:col-span-3">
+                <div
+                  className={`md:col-span-3 transition-colors ${dragOverTeam === 'B' ? 'bg-orange-500/5' : ''}`}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setDragOverTeam('B');
+                  }}
+                  onDragLeave={() => setDragOverTeam(null)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    handleDropToTeam('B');
+                  }}
+                >
                   <h4 className="mono-font text-orange-500 text-[9px] md:text-xs font-bold uppercase tracking-[0.3em] mb-2 md:mb-4 flex items-center gap-2 md:gap-3">
                     <span className="h-px w-6 md:w-8 bg-orange-500"></span>
                     {teamBName.trim() || 'Equipo 2'}
                   </h4>
+                  <p className="mono-font text-white/30 text-[8px] md:text-[10px] uppercase tracking-wider mb-2">
+                    Arrastrá jugadores acá para moverlos
+                  </p>
                   <div className="space-y-1.5 md:space-y-3">
                     {matchResult.teamB.players.map(p => (
-                      <PlayerCard key={p.id} player={p} compact />
+                      <div
+                        key={p.id}
+                        draggable
+                        onDragStart={() => handleDragStart(p.id, 'B')}
+                        onDragEnd={handleDragEnd}
+                        className={`cursor-move ${dragPlayerId === p.id ? 'opacity-50' : ''}`}
+                      >
+                        <PlayerCard player={p} compact />
+                      </div>
                     ))}
                   </div>
                 </div>
